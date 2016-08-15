@@ -85,9 +85,17 @@ D3 = numpy.array([[lambda1 + 2 * mu0, lambda1, 0.0],
                  [lambda1, lambda1 + 2 * mu0, 0.0],
                  [0.0, 0.0, mu0]])
 
+Ddmu = numpy.array([[2.0, 0.0, 0.0],
+                    [0.0, 2.0, 0.0],
+                    [0.0, 0.0, 1.0]])
+
+Ddlambda = numpy.array([[1.0, 1.0, 0.0],
+                        [1.0, 1.0, 0.0],
+                        [0.0, 0.0, 0.0]])
+
 Ks = []
 Ms = []
-for D in [D0, D1, D2, D3]:
+for D in [Ddmu, Ddlambda]:#, D2, D3]
     m = Material('m', D = D, rho = 2700.0)
 
     integral = Integral('i', order=2)
@@ -114,8 +122,8 @@ for D in [D0, D1, D2, D3]:
     Ks.append(mtx_k)
     Ms.append(mtx_m)
 
-dKdmu = (Ks[1] - Ks[0]) / (mu1 - mu0)
-dKdlambda = (Ks[3] - Ks[2]) / (lambda1 - lambda0)
+dKdmu = Ks[0]# (Ks[1] - Ks[0]) / (mu1 - mu0)
+dKdlambda = Ks[1]# (Ks[3] - Ks[2]) / (lambda1 - lambda0)
 print dKdmu
 #print Ks[-1]
 #%%
@@ -214,8 +222,8 @@ poisson = 0.36
 
 data = []
 for i in range(N):
-    young = min(10.0, max(2.0, numpy.random.randn() / 2.0 + 6.8))
-    poisson = min(0.49, max(0.10, numpy.random.randn() / 10.0 + 0.36))
+    young = max(0.0, numpy.random.randn() / 2.0 + 6.8)
+    poisson = min(0.49, numpy.random.randn() / 10.0 + 0.36)
 
     mu0 = young / (2.0 * (1.0 + poisson))
     lambd = young * poisson / ((1.0 + poisson) * (1.0 - 2.0 * poisson))
@@ -237,7 +245,11 @@ poisson = 0.4
 mu = numpy.mean(data, axis = 0)
 sigma = numpy.std(data, axis = 0)
 
-for i in range(50):
+llogp = []
+youngs = []
+poissons = []
+
+for i in range(85):
     mu0 = young / (2.0 * (1.0 + poisson))
     lambd = young * poisson / ((1.0 + poisson) * (1.0 - 2.0 * poisson))
 
@@ -247,8 +259,8 @@ for i in range(50):
 
     vals, derivmu, derivlambda = evalValAndDeriv(D)
 
-    dlpdmu = derivmu.dot((mu - vals) / sigma)
-    dlpdlambda = derivlambda.dot((mu - vals) / sigma)
+    dlpdmu = derivmu.dot((mu - vals) / sigma**2)
+    dlpdlambda = derivlambda.dot((mu - vals) / sigma**2)
 
     dmudyoung = 1 / (2 * (1 + poisson))
     dmudpoisson = -young / (2 * (1 + poisson)**2)
@@ -256,19 +268,39 @@ for i in range(50):
     dlambdadpoisson = (young * ((1 + poisson) * (1 - 2 * poisson)) + (1 + 4 * poisson) * young * poisson) / (((1 + poisson) * (1 - 2 * poisson))**2)
 
     dlpdyoung = dlpdmu * dmudyoung + dlpdlambda * dlambdadyoung
-    dlpdpoisson = dlpdmu * dmudpoisson + dlpdlambda * dlambdadpoisson + (0.3 - poisson) / 1.0
+    dlpdpoisson = dlpdmu * dmudpoisson + dlpdlambda * dlambdadpoisson# + (0.3 - poisson) / 0.1**2
 
-    print "log likelihood: ", sum(0.5 * (mu - vals)**2 / sigma)
+    llogp.append(-sum(0.5 * (mu - vals)**2 / sigma**2))# - 0.5 * (0.3 - poisson)**2 / 0.1**2)
+    youngs.append(young)
+    poissons.append(poisson)
+
+    print "log likelihood: ", llogp[-1]
     print "young's modulus: ", young, dlpdyoung
     print "poisson: ", poisson, dlpdpoisson
     print ""
 
-    young += dlpdyoung
-    poisson += dlpdpoisson * 0.1
+    young += dlpdyoung * 0.005
+    poisson += dlpdpoisson * 0.005
+
+    poisson = max(0.05, min(0.49, poisson))
 
     print "New young's modulus: ", young
     print "new poisson ratio: ", poisson
     print ""
+#%%
+plt.plot(llogp)
+plt.title('log probability of model')
+plt.show()
+ho
+plt.plot(youngs)
+plt.plot(range(len(llogp)), [6.8] * len(llogp))
+plt.title('Young\'s modulus')
+plt.show()
+
+plt.plot(poissons)
+plt.plot(range(len(llogp)), [0.36] * len(llogp))
+plt.title('Poisson\'s ratio')
+plt.show()
 
 #%%
 import matplotlib.pyplot as plt
