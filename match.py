@@ -22,6 +22,7 @@ from sfepy.discrete.conditions import Conditions, EssentialBC
 from sfepy.mechanics.matcoefs import stiffness_from_youngpoisson
 from sfepy.mesh.mesh_generators import gen_block_mesh
 from sfepy.solvers import Solver
+output.set_output(quiet=True)
 
 import numpy
 
@@ -76,7 +77,7 @@ v = FieldVariable('v', 'test', field, primary_var_name = 'u')
 #mtx_d = stiffness_from_youngpoisson(dim, youngs, poisson)
 
 #c11, c12, c44 = 2.30887372458, 0.778064244563, 0.757576236829
-c11, c12, c44 = 3.0, 1.5, 0.75
+c11, c12, c44 = 3, 1.5, 0.75
 #c11 = 3.00
 #c12 = 1.5
 #c44 = 0.75
@@ -204,7 +205,7 @@ c11s = []
 c12s = []
 c44s = []
 
-for i in range(1000):
+for i in range(2000):
     c22 = c11t
     c33 = c11t
 
@@ -234,16 +235,17 @@ for i in range(1000):
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
-    dlpdl = []
-    eps = 0.5
-    for val in (eigst - mu):
-        if abs(val) > eps:
-            if val > 0.0:
-                dlpdl.append(1.0)
-            else:
-                dlpdl.append(-1.0)
-        else:
-            dlpdl.append(10 * val)
+    #dlpdl = []
+    y = 0.25
+    dlpdl = ((2 * (eigst - mu)) / ((1 + (eigst - mu)**2 / y**2) * y**2))
+    #for val in (eigst - mu):
+    #    if abs(val) > eps:
+    #        if val > 0.0:
+    #            dlpdl.append(1.0)
+    #        else:
+    #            dlpdl.append(-1.0)
+    #    else:
+    #        dlpdl.append(10 * val)
 
         #if abs(val) < 0.001:
         #    dlpdl.append(0.0)
@@ -258,7 +260,7 @@ for i in range(1000):
     dlpdc12 = dlpdl.dot(dldc12)
     dlpdc44 = dlpdl.dot(dldc44)
 
-    llogp.append(sum(numpy.abs(eigst - mu)))
+    llogp.append(sum(numpy.log(1 / (numpy.pi *  (1 + (eigst - mu)**2 / y**2) * y))))
     #llogp.append(-sum(0.5 * (mu - eigst)[:6]**2 / sigma**2))# - 0.5 * (0.3 - poisson)**2 / 0.1**2)
 
     c11s.append(c11t)
@@ -269,9 +271,10 @@ for i in range(1000):
     print "Parameters: ", c11t, c12t, c44t
     print ""
 
-    c11t -= dlpdc11 * 0.00001
-    c12t -= dlpdc12 * 0.00001
-    c44t -= dlpdc44 * 0.00001
+    dlpdc = numpy.array([dlpdc11, dlpdc12, dlpdc44])
+    dlpdc /= numpy.linalg.norm(dlpdc)
+
+    c11t, c12t, c44t = -dlpdc * 0.01 + [c11t, c12t, c44t]
 
     print "New parameters: ", c11t, c12t, c44t
     print ""
@@ -282,3 +285,285 @@ for i in range(1000):
 
     print "New parameters: ", c11t, c12t, c44t
     print ""
+
+#%%young = 5
+
+mu = eigs
+
+llogp = []
+youngs = []
+poissons = []
+c11t, c12t, c44t = 2, 2.0, 2
+#c11t = 2.00
+#c12t = 1.0
+#c44t = 1.0
+
+c11s = []
+c12s = []
+c44s = []
+
+for i in range(2000):
+    c22 = c11t
+    c33 = c11t
+
+    c13 = c12t
+    c23 = c12t
+
+    c55 = c44t
+    c66 = c44t
+
+    D = numpy.array([[c11t, c12t, c13, 0, 0, 0],
+                     [c12t, c22, c23, 0, 0, 0],
+                     [c13, c23, c33, 0, 0, 0],
+                     [0, 0, 0, c44t, 0, 0],
+                     [0, 0, 0, 0, c55, 0],
+                     [0, 0, 0, 0, 0, c66]])
+
+    Kt, Mt = assemble(D)
+
+    eigst, evecst = eig_solver(Kt, Mt, 30 + nrbm, eigenvectors=True)
+
+    eigst = eigst[6:]
+    evecst = evecst[:, 6:]
+
+    #print list(zip(eigst, eigs))
+
+    dldc11 = numpy.array([evecst[:, i].T.dot(dKdc11.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+    dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+    dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+
+    #dlpdl = []
+    y = 0.25
+    dlpdl = ((2 * (eigst - mu)) / ((1 + (eigst - mu)**2 / y**2) * y**2))
+    #for val in (eigst - mu):
+    #    if abs(val) > eps:
+    #        if val > 0.0:
+    #            dlpdl.append(1.0)
+    #        else:
+    #            dlpdl.append(-1.0)
+    #    else:
+    #        dlpdl.append(10 * val)
+
+        #if abs(val) < 0.001:
+        #    dlpdl.append(0.0)
+        #elif val < 0.0:
+        #    dlpdl.append(-1.0)
+        #else:
+        #    dlpdl.append(1.0)
+
+    dlpdl = numpy.array(dlpdl)#-(mu - eigst) / sigma**2
+
+    dlpdc11 = dlpdl.dot(dldc11)
+    dlpdc12 = dlpdl.dot(dldc12)
+    dlpdc44 = dlpdl.dot(dldc44)
+
+    logp = sum(numpy.log(1 / (numpy.pi *  (1 + (eigst - mu)**2 / y**2) * y)))
+
+    if len(llogp) > 0:
+        r = logp - llogp[-1]
+    else:
+        r = 1.0
+
+    print "Difference in log likelihood: ", r, logp, llogp[-1] if len(llogp) > 0 else 0
+    print "Proposing: ", c11t, c12t, c44t
+
+    if r < 0.0:
+        if numpy.random.rand() > numpy.exp(r):
+            print "Rejecting"
+
+            c11t = c11s[-1] + numpy.random.randn() / 15.0
+            c12t = c12s[-1] + numpy.random.randn() / 15.0
+            c44t = c44s[-1] + numpy.random.randn() / 15.0
+            continue
+
+    print "Accepting"
+
+    llogp.append(logp)
+    #llogp.append(-sum(0.5 * (mu - eigst)[:6]**2 / sigma**2))# - 0.5 * (0.3 - poisson)**2 / 0.1**2)
+
+    c11s.append(c11t)
+    c12s.append(c12t)
+    c44s.append(c44t)
+
+    c11t = c11s[-1] + numpy.random.randn() / 15.0
+    c12t = c12s[-1] + numpy.random.randn() / 15.0
+    c44t = c44s[-1] + numpy.random.randn() / 15.0
+
+    print "log likelihood: ", llogp[-1]
+    print "Parameters: ", c11t, c12t, c44t
+    print ""
+
+    continue
+
+    #c11t -= dlpdc11 * 0.00001
+    #c12t -= dlpdc12 * 0.00001
+    #c44t -= dlpdc44 * 0.00001
+
+    print "New parameters: ", c11t, c12t, c44t
+    print ""
+
+    c11t = min(5., max(1.0, c11t))
+    c12t = min(3.0, max(.5, c12t))
+    c44t = min(2.0, max(.25, c44t))
+
+    print "New parameters: ", c11t, c12t, c44t
+    print ""
+
+#%%young = 5
+
+mu = eigs
+
+llogp = []
+youngs = []
+poissons = []
+c11t, c12t, c44t = 2, 2.0, 2
+
+c11s = []
+c12s = []
+c44s = []
+
+def UgradU(q):
+    c11t, c12t, c44t = q
+    c22 = c11t
+    c33 = c11t
+
+    c13 = c12t
+    c23 = c12t
+
+    c55 = c44t
+    c66 = c44t
+
+    D = numpy.array([[c11t, c12t, c13, 0, 0, 0],
+                     [c12t, c22, c23, 0, 0, 0],
+                     [c13, c23, c33, 0, 0, 0],
+                     [0, 0, 0, c44t, 0, 0],
+                     [0, 0, 0, 0, c55, 0],
+                     [0, 0, 0, 0, 0, c66]])
+
+    Kt, Mt = assemble(D)
+
+    eigst, evecst = eig_solver(Kt, Mt, 30 + nrbm, eigenvectors=True)
+
+    eigst = eigst[6:]
+    evecst = evecst[:, 6:]
+
+    #print list(zip(eigst, eigs))
+
+    dldc11 = numpy.array([evecst[:, i].T.dot(dKdc11.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+    dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+    dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+
+    y = 0.25
+    dlpdl = -((2 * (eigst - mu)) / ((1 + (eigst - mu)**2 / y**2) * y**2))
+
+    dlpdl = numpy.array(dlpdl)
+
+    dlpdc11 = dlpdl.dot(dldc11)
+    dlpdc12 = dlpdl.dot(dldc12)
+    dlpdc44 = dlpdl.dot(dldc44)
+
+    logp = sum(numpy.log(1 / (numpy.pi *  (1 + (eigst - mu)**2 / y**2) * y)))
+
+    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44])
+
+current_q = numpy.array([c11t, c12t, c44t])
+L = 20
+epsilon = 0.005
+for i in range(2000):
+    q = current_q
+    p = numpy.random.randn(len(q)) # independent standard normal variates
+
+    current_p = p
+    # Make a half step for momentum at the beginning
+    U, gradU = UgradU(q)
+    p = p - epsilon * gradU / 2
+
+    # Alternate full steps for position and momentum
+    for i in range(L):
+        # Make a full step for the position
+        q = q + epsilon * p
+
+        # Make a full step for the momentum, except at end of trajectory
+        if i != L - 1:
+            U, gradU = UgradU(q)
+            p = p - epsilon * gradU
+
+        print "New q, H: ", q, U + sum(p ** 2) / 2, U, sum(p ** 2) / 2
+
+    U, gradU = UgradU(q)
+    # Make a half step for momentum at the end.
+    p = p - epsilon * gradU / 2
+    # Negate momentum at end of trajectory to make the proposal symmetric
+    p = -p
+    # Evaluate potential and kinetic energies at start and end of trajectory
+    UC, gradUC = UgradU(current_q)
+    current_U = UC
+    current_K = sum(current_p ** 2) / 2
+    proposed_U = U
+    proposed_K = sum(p ** 2) / 2
+
+    # Accept or reject the state at end of trajectory, returning either
+    # the position at the end of the trajectory or the initial position
+    dQ = current_U - proposed_U + current_K - proposed_K
+
+    print "Energy change: ", dQ, current_U, proposed_U, current_K, proposed_K
+    print "Epsilon: ", epsilon
+    if numpy.random.rand() < min(1.0, numpy.exp(dQ)):
+        current_q = q # accept
+
+        print "Accepted: ", current_q
+        c11s.append(current_q[0])
+        c12s.append(current_q[1])
+        c44s.append(current_q[2])
+
+        epsilon *= 1.2
+    else:
+        print "Rejected: ", current_q
+        epsilon /= 1.4
+        continue
+
+#%%
+
+import seaborn
+import pandas
+
+df = pandas.DataFrame({'c11' : c11s[-250:], 'c12' : c12s[-250:], 'c44' : c44s[-250:]})
+
+seaborn.pairplot(df)
+plt.gcf().set_size_inches((12, 8))
+plt.show()
+
+import scipy.stats
+
+g = seaborn.PairGrid(df)
+g.map_diag(plt.hist)
+g.map_offdiag(seaborn.kdeplot, n_levels = 6);
+plt.gcf().set_size_inches((12, 8))
+plt.show()
+
+for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s)]:
+    seaborn.distplot(d[-250:], kde = False, fit = scipy.stats.norm)
+    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-250:]), numpy.std(d[-250:])))
+    plt.gcf().set_size_inches((5, 4))
+    plt.show()
+#%%
+plt.plot(c11s, c12s)
+plt.ylabel('c12')
+plt.xlabel('c11')
+plt.title('Full trajectory c11 vs. c12')
+plt.show()
+plt.plot(c11s, c44s)
+plt.ylabel('c44')
+plt.xlabel('c11')
+plt.title('Full trajectory c11 vs. c44')
+plt.show()
+plt.plot(c12s, c44s)
+plt.ylabel('c44')
+plt.xlabel('c12')
+plt.title('Full trajectory c12 vs. c44')
+plt.show()
+#%%
+import pickle
+f = open('posterior.pickle', 'w')
+pickle.dump((c11s, c12s, c44s), f)
+f.close()
