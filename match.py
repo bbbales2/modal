@@ -22,6 +22,7 @@ from sfepy.discrete.conditions import Conditions, EssentialBC
 from sfepy.mechanics.matcoefs import stiffness_from_youngpoisson
 from sfepy.mesh.mesh_generators import gen_block_mesh
 from sfepy.solvers import Solver
+import scipy
 output.set_output(quiet=True)
 
 import numpy
@@ -37,16 +38,16 @@ eig_conf = Struct(name='evp', kind=aux[0], **kwargs)
 
 output.level = -1
 
-density = 8500.0
+density = 4401.6959210
 
-dims = numpy.array([0.007, 0.008, 0.013])
+dims = numpy.array([0.007753, 0.009057, 0.013199])
 dim = len(dims)
 
-shape = [5, 5, 5]
+shape = [6, 6, 6]
 
 centre = numpy.array([0.0, 0.0, 0.0])
 
-order = 1
+order = 2
 
 tmp = time.time()
 mesh = gen_block_mesh(dims, shape, centre, name='mesh')
@@ -77,7 +78,7 @@ v = FieldVariable('v', 'test', field, primary_var_name = 'u')
 #mtx_d = stiffness_from_youngpoisson(dim, youngs, poisson)
 
 #c11, c12, c44 = 2.30887372458, 0.778064244563, 0.757576236829
-c11, c12, c44 = 3, 1.5, 0.75
+c11, c12, c44 = 1.685, 0.7928, 0.4459
 #c11 = 3.00
 #c12 = 1.5
 #c44 = 0.75
@@ -158,7 +159,9 @@ nrbm = 6
 
 tmp = time.time()
 try:
-    eigs, svecs = eig_solver(K, M, 30 + nrbm, eigenvectors=True)
+    #eigs, svecs = eig_solver(K, M, 30 + nrbm, eigenvectors=True)
+    #eigs, svecs = scipy.sparse.linalg.eigsh(K, 30 + nrbm, M = M, which = 'SM')
+    eigs, svecs = scipy.sparse.linalg.eigsh(K, 30 + nrbm, M = M, sigma = 1.0)
 except sla.ArpackNoConvergence as ee:
     eigs2 = ee.eigenvalues
     svecs = ee.eigenvectors
@@ -171,15 +174,12 @@ output('%d eigenvalues converged (%d ignored as rigid body modes)' %
 eigs = eigs[nrbm:]
 svecs = svecs[:, nrbm:]
 
-omegas = nm.sqrt(eigs)
+omegas = nm.sqrt(eigs * 1e11)
 freqs = omegas / (2 * nm.pi)
 
-output('number |         eigenvalue |  angular frequency '
-           '|          frequency')
+print 'number |         eigenvalue |  angular frequency |          frequency'
 for ii, eig in enumerate(eigs):
-    output('%6d | %17.12e | %17.12e | %17.12e'
-               % (ii + 1, eig, omegas[ii], freqs[ii]))
-
+    print '{0:6d} | {1:17.12e} | {2:17.12e} | {3:17.12e}'.format(ii + 1, eig, omegas[ii], freqs[ii])
 #%%young = 5
 import matplotlib.pyplot as plt
 
@@ -224,7 +224,7 @@ for i in range(2000):
 
     Kt, Mt = assemble(D)
 
-    eigst, evecst = eig_solver(Kt, Mt, 30 + nrbm, eigenvectors=True)
+    eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 1.0)
 
     eigst = eigst[6:]
     evecst = evecst[:, 6:]
@@ -321,7 +321,7 @@ for i in range(2000):
 
     Kt, Mt = assemble(D)
 
-    eigst, evecst = eig_solver(Kt, Mt, 30 + nrbm, eigenvectors=True)
+    eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 1.0)
 
     eigst = eigst[6:]
     evecst = evecst[:, 6:]
@@ -410,20 +410,55 @@ for i in range(2000):
     print ""
 
 #%%young = 5
+freqs = numpy.array([109.076,
+136.503,
+144.899,
+184.926,
+188.476,
+195.562,
+199.246,
+208.460,
+231.220,
+232.630,
+239.057,
+241.684,
+242.159,
+249.891,
+266.285,
+272.672,
+285.217,
+285.670,
+288.796,
+296.976,
+301.101,
+303.024,
+305.115,
+305.827,
+306.939,
+310.428,
+318.000,
+319.457,
+322.249,
+323.464])
+
+eigs = (freqs * numpy.pi * 2000) ** 2 / 1e11
+
 
 mu = eigs
 
 llogp = []
 youngs = []
 poissons = []
-c11t, c12t, c44t = 2, 2.0, 2
+c11t, c12t, c44t =  1.685, 0.7928, 0.4459#2, 1.0, 1
+y = 0.25
 
 c11s = []
 c12s = []
 c44s = []
+ys = []
 
 def UgradU(q):
-    c11t, c12t, c44t = q
+    c11t, c12t, c44t, y = q
     c22 = c11t
     c33 = c11t
 
@@ -442,19 +477,21 @@ def UgradU(q):
 
     Kt, Mt = assemble(D)
 
-    eigst, evecst = eig_solver(Kt, Mt, 30 + nrbm, eigenvectors=True)
+    eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 1.0)
 
     eigst = eigst[6:]
     evecst = evecst[:, 6:]
 
     #print list(zip(eigst, eigs))
 
+    t = 1 + (eigst - mu)**2 / y**2
+
     dldc11 = numpy.array([evecst[:, i].T.dot(dKdc11.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
-    y = 0.25
-    dlpdl = -((2 * (eigst - mu)) / ((1 + (eigst - mu)**2 / y**2) * y**2))
+    dlpdl = -((2 * (eigst - mu)) / (t * y**2))
+    dlpdy = sum(numpy.pi * t * ((2 * (eigst - mu) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
 
     dlpdl = numpy.array(dlpdl)
 
@@ -464,12 +501,14 @@ def UgradU(q):
 
     logp = sum(numpy.log(1 / (numpy.pi *  (1 + (eigst - mu)**2 / y**2) * y)))
 
-    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44])
+    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy])
 
-current_q = numpy.array([c11t, c12t, c44t])
-L = 20
-epsilon = 0.005
-for i in range(2000):
+current_q = numpy.array([c11t, c12t, c44t, y])
+L = 100
+epsilon = 0.00025
+#for ii in range(2000):
+ii = 0
+while len(c11s) < 200:
     q = current_q
     p = numpy.random.randn(len(q)) # independent standard normal variates
 
@@ -488,7 +527,7 @@ for i in range(2000):
             U, gradU = UgradU(q)
             p = p - epsilon * gradU
 
-        print "New q, H: ", q, U + sum(p ** 2) / 2, U, sum(p ** 2) / 2
+        #print "New q, H: ", q, U + sum(p ** 2) / 2, U, sum(p ** 2) / 2
 
     U, gradU = UgradU(q)
     # Make a half step for momentum at the end.
@@ -506,28 +545,35 @@ for i in range(2000):
     # the position at the end of the trajectory or the initial position
     dQ = current_U - proposed_U + current_K - proposed_K
 
-    print "Energy change: ", dQ, current_U, proposed_U, current_K, proposed_K
+    print "Energy change ({0} samples): ".format(ii + 1), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
     print "Epsilon: ", epsilon
     if numpy.random.rand() < min(1.0, numpy.exp(dQ)):
         current_q = q # accept
 
-        print "Accepted: ", current_q
         c11s.append(current_q[0])
         c12s.append(current_q[1])
         c44s.append(current_q[2])
+        ys.append(current_q[3])
 
-        epsilon *= 1.2
+        print "Accepted ({0} accepts so far): {1}".format(len(c11s), current_q)
+        #epsilon *= 1.2
     else:
         print "Rejected: ", current_q
-        epsilon /= 1.4
-        continue
+        #epsilon /= 1.4
+
+    ii = ii + 1
+#%%
+
+for minv, value, maxv in zip(numpy.sqrt((eigs - 0.35357) * 1e11) / (numpy.pi * 2000), freqs, numpy.sqrt((eigs + 0.35357) * 1e11) / (numpy.pi * 2000)):
+    print "[{0:4.2f} {1:4.2f} {2:4.2f}]".format(minv, value, maxv)
 
 #%%
 
 import seaborn
 import pandas
+import matplotlib.pyplot as plt
 
-df = pandas.DataFrame({'c11' : c11s[-250:], 'c12' : c12s[-250:], 'c44' : c44s[-250:]})
+df = pandas.DataFrame({'c11' : c11s[-100:], 'c12' : c12s[-100:], 'c44' : c44s[-100:], 'y' : ys[-100:]})
 
 seaborn.pairplot(df)
 plt.gcf().set_size_inches((12, 8))
@@ -541,9 +587,9 @@ g.map_offdiag(seaborn.kdeplot, n_levels = 6);
 plt.gcf().set_size_inches((12, 8))
 plt.show()
 
-for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s)]:
-    seaborn.distplot(d[-250:], kde = False, fit = scipy.stats.norm)
-    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-250:]), numpy.std(d[-250:])))
+for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('y', ys)]:
+    seaborn.distplot(d[-100:], kde = False, fit = scipy.stats.norm)
+    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-100:]), numpy.std(d[-100:])))
     plt.gcf().set_size_inches((5, 4))
     plt.show()
 #%%
