@@ -43,7 +43,7 @@ density = 4401.6959210
 dims = numpy.array([0.007753, 0.009057, 0.013199])
 dim = len(dims)
 
-shape = [6, 6, 6]
+shape = [4, 4, 4]
 
 centre = numpy.array([0.0, 0.0, 0.0])
 
@@ -180,30 +180,65 @@ freqs = omegas / (2 * nm.pi)
 print 'number |         eigenvalue |  angular frequency |          frequency'
 for ii, eig in enumerate(eigs):
     print '{0:6d} | {1:17.12e} | {2:17.12e} | {3:17.12e}'.format(ii + 1, eig, omegas[ii], freqs[ii])
+#%%
+tmp = time.time()
+scipy.sparse.linalg.spsolve(K, M)
+print time.time() - tmp
+
+sys.stdout.flush()
+
+tmp = time.time()
+scipy.sparse.linalg.spsolve(M, K)
+print time.time() - tmp
+
 #%%young = 5
 import matplotlib.pyplot as plt
+freqs = numpy.array([109.076,
+136.503,
+144.899,
+184.926,
+188.476,
+195.562,
+199.246,
+208.460,
+231.220,
+232.630,
+239.057,
+241.684,
+242.159,
+249.891,
+266.285,
+272.672,
+285.217,
+285.670,
+288.796,
+296.976,
+301.101,
+303.024,
+305.115,
+305.827,
+306.939,
+310.428,
+318.000,
+319.457,
+322.249,
+323.464])
 
-poisson = 0.4
+eigs = (freqs * numpy.pi * 2000) ** 2 / 1e11
 
-mu = eigs#[:12]
-sigma = 0.1
+
+mu = eigs
 
 llogp = []
 youngs = []
 poissons = []
-#2.30887372458 0.778064244563 0.757576236829
-c11t, c12t, c44t = 2, 1, 1
-#c11t, c12t, c44t = 2.82691758885, 1.2418749993, 0.74314183455
-#2.98075401161 1.47430936292 0.756130056282
-#c11t, c12t, c44t = 2.87594152737, 1.35677794317, 0.7530964877#2.72837807963, 1.21195198294, 0.746315594831
-#2.28912477153, 0.794740110352, 0.849348201626
-#c11t = 2.00
-#c12t = 1.0
-#c44t = 1.0
+c11t, c12t, c44t =  1.685, 0.7928, 0.4459#2, 1.0, 1
+y = 1.0
 
 c11s = []
 c12s = []
 c44s = []
+ys = []
 
 for i in range(2000):
     c22 = c11t
@@ -235,56 +270,43 @@ for i in range(2000):
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
-    #dlpdl = []
-    y = 0.25
-    dlpdl = ((2 * (eigst - mu)) / ((1 + (eigst - mu)**2 / y**2) * y**2))
-    #for val in (eigst - mu):
-    #    if abs(val) > eps:
-    #        if val > 0.0:
-    #            dlpdl.append(1.0)
-    #        else:
-    #            dlpdl.append(-1.0)
-    #    else:
-    #        dlpdl.append(10 * val)
+    dlpdl = (mu - eigst) / y ** 2
+    dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
 
-        #if abs(val) < 0.001:
-        #    dlpdl.append(0.0)
-        #elif val < 0.0:
-        #    dlpdl.append(-1.0)
-        #else:
-        #    dlpdl.append(1.0)
-
-    dlpdl = numpy.array(dlpdl)#-(mu - eigst) / sigma**2
+    dlpdl = numpy.array(dlpdl)
 
     dlpdc11 = dlpdl.dot(dldc11)
     dlpdc12 = dlpdl.dot(dldc12)
     dlpdc44 = dlpdl.dot(dldc44)
 
-    llogp.append(sum(numpy.log(1 / (numpy.pi *  (1 + (eigst - mu)**2 / y**2) * y))))
+    logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
+
+    llogp.append(logp)
     #llogp.append(-sum(0.5 * (mu - eigst)[:6]**2 / sigma**2))# - 0.5 * (0.3 - poisson)**2 / 0.1**2)
 
     c11s.append(c11t)
     c12s.append(c12t)
     c44s.append(c44t)
+    ys.append(y)
 
     print "log likelihood: ", llogp[-1]
-    print "Parameters: ", c11t, c12t, c44t
-    print ""
+    #print "Parameters: ", c11t, c12t, c44t, y
+    #print ""
 
-    dlpdc = numpy.array([dlpdc11, dlpdc12, dlpdc44])
+    dlpdc = numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy])
     dlpdc /= numpy.linalg.norm(dlpdc)
 
-    c11t, c12t, c44t = -dlpdc * 0.01 + [c11t, c12t, c44t]
+    c11t, c12t, c44t, y = dlpdc * 0.01 + [c11t, c12t, c44t, y]
 
-    print "New parameters: ", c11t, c12t, c44t
-    print ""
+    print "New parameters: ", c11t, c12t, c44t, y
+    #print ""
 
     c11t = min(5., max(1.0, c11t))
     c12t = min(3.0, max(.5, c12t))
     c44t = min(2.0, max(.25, c44t))
 
-    print "New parameters: ", c11t, c12t, c44t
-    print ""
+    #print "New parameters: ", c11t, c12t, c44t, y
+    #print ""
 
 #%%young = 5
 
@@ -456,7 +478,7 @@ c11s = []
 c12s = []
 c44s = []
 ys = []
-
+#%%
 def UgradU(q):
     c11t, c12t, c44t, y = q
     c22 = c11t
@@ -484,14 +506,16 @@ def UgradU(q):
 
     #print list(zip(eigst, eigs))
 
-    t = 1 + (eigst - mu)**2 / y**2
+    t = 1 + (mu - eigst)**2 / y**2
 
     dldc11 = numpy.array([evecst[:, i].T.dot(dKdc11.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
-    dlpdl = -((2 * (eigst - mu)) / (t * y**2))
-    dlpdy = sum(numpy.pi * t * ((2 * (eigst - mu) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
+    dlpdl = (mu - eigst) / y ** 2
+    dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
+    #dlpdl = ((2 * (mu - eigst)) / (t * y**2))
+    #dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
 
     dlpdl = numpy.array(dlpdl)
 
@@ -499,16 +523,17 @@ def UgradU(q):
     dlpdc12 = dlpdl.dot(dldc12)
     dlpdc44 = dlpdl.dot(dldc44)
 
-    logp = sum(numpy.log(1 / (numpy.pi *  (1 + (eigst - mu)**2 / y**2) * y)))
+    logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
+    #logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
 
     return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy])
 
 current_q = numpy.array([c11t, c12t, c44t, y])
-L = 100
-epsilon = 0.00025
+L = 50
+epsilon = 0.001
 #for ii in range(2000):
 ii = 0
-while len(c11s) < 200:
+while len(c11s) < 500:
     q = current_q
     p = numpy.random.randn(len(q)) # independent standard normal variates
 
@@ -573,7 +598,7 @@ import seaborn
 import pandas
 import matplotlib.pyplot as plt
 
-df = pandas.DataFrame({'c11' : c11s[-100:], 'c12' : c12s[-100:], 'c44' : c44s[-100:], 'y' : ys[-100:]})
+df = pandas.DataFrame({'c11' : c11s[-200:], 'c12' : c12s[-200:], 'c44' : c44s[-200:], 'y' : ys[-200:]})
 
 seaborn.pairplot(df)
 plt.gcf().set_size_inches((12, 8))
@@ -588,8 +613,8 @@ plt.gcf().set_size_inches((12, 8))
 plt.show()
 
 for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('y', ys)]:
-    seaborn.distplot(d[-100:], kde = False, fit = scipy.stats.norm)
-    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-100:]), numpy.std(d[-100:])))
+    seaborn.distplot(d[-200:], kde = False, fit = scipy.stats.norm)
+    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-200:]), numpy.std(d[-200:])))
     plt.gcf().set_size_inches((5, 4))
     plt.show()
 #%%
