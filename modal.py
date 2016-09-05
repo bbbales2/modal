@@ -291,7 +291,7 @@ for i in range(85):
 plt.plot(llogp)
 plt.title('log probability of model')
 plt.show()
-ho
+
 plt.plot(youngs)
 plt.plot(range(len(llogp)), [6.8] * len(llogp))
 plt.title('Young\'s modulus')

@@ -29,6 +29,96 @@ import numpy
 
 import time
 
+def fder(C, a, b, y):
+    # Code stolen from Will Lenthe
+    K = numpy.zeros((6, 6))
+    dKdQ = numpy.zeros((6, 6, 3, 3))
+
+    Q = numpy.array([[numpy.cos(b) * numpy.cos(y), -numpy.cos(b) * numpy.sin(y), numpy.sin(b)],
+                     [numpy.cos(y) * numpy.sin(a) * numpy.sin(b) + numpy.cos(a) * numpy.sin(y), numpy.cos(a) * numpy.cos(y) - numpy.sin(a) * numpy.sin(b) * numpy.sin(y), -numpy.cos(b) * numpy.sin(a)],
+                     [-numpy.cos(a) * numpy.cos(y) * numpy.sin(b) + numpy.sin(a) * numpy.sin(y), numpy.cos(y) * numpy.sin(a) + numpy.cos(a) * numpy.sin(b) * numpy.sin(y), numpy.cos(a) * numpy.cos(b)]])
+
+    dQda = numpy.array([[0, 0, 0],
+            [numpy.cos(a) * numpy.cos(y) * numpy.sin(b) - numpy.sin(a) * numpy.sin(y), -numpy.cos(y) * numpy.sin(a) - numpy.cos(a) * numpy.sin(b) * numpy.sin(y), -numpy.cos(a) * numpy.cos(b)],
+            [numpy.cos(y) * numpy.sin(a) * numpy.sin(b) + numpy.cos(a) * numpy.sin(y), numpy.cos(a) * numpy.cos(y) - numpy.sin(a) * numpy.sin(b) * numpy.sin(y), -numpy.cos(b) * numpy.sin(a)]])
+
+    dQdb = numpy.array([[-numpy.cos(y) * numpy.sin(b), numpy.sin(b) * numpy.sin(y), numpy.cos(b)],
+            [numpy.cos(b) * numpy.cos(y) * numpy.sin(a), -numpy.cos(b) * numpy.sin(a) * numpy.sin(y), numpy.sin(a) * numpy.sin(b)],
+            [-numpy.cos(a) * numpy.cos(b) * numpy.cos(y), numpy.cos(a) * numpy.cos(b) * numpy.sin(y), -numpy.cos(a) * numpy.sin(b)]])
+
+    dQdy = numpy.array([[-numpy.cos(b) * numpy.sin(y), -numpy.cos(b) * numpy.cos(y), 0],
+            [numpy.cos(a) * numpy.cos(y) - numpy.sin(a) * numpy.sin(b) * numpy.sin(y), -numpy.cos(y) * numpy.sin(a) * numpy.sin(b) - numpy.cos(a) * numpy.sin(y), 0],
+            [numpy.cos(y) * numpy.sin(a) + numpy.cos(a) * numpy.sin(b) * numpy.sin(y), numpy.cos(a) * numpy.cos(y) * numpy.sin(b) - numpy.sin(a) * numpy.sin(y), 0]])
+
+    for i in range(3):
+        for j in range(3):
+            dKdQ[i, j, i, j] = 2.0 * Q[i, j]
+            dKdQ[i, j + 3, i, (j + 1) % 3] = Q[i, (j + 2) % 3]
+            dKdQ[i, j + 3, i, (j + 2) % 3] = Q[i, (j + 1) % 3]
+            dKdQ[i + 3, j, (i + 1) % 3, j] = Q[(i + 2) % 3, j]
+            dKdQ[i + 3, j, (i + 2) % 3, j] = Q[(i + 1) % 3, j]
+            dKdQ[i + 3, j + 3, (i + 1) % 3, (j + 1) % 3] = Q[(i + 2) % 3, (j + 2) % 3]
+            dKdQ[i + 3, j + 3, (i + 2) % 3, (j + 2) % 3] = Q[(i + 1) % 3, (j + 1) % 3]
+            dKdQ[i + 3, j + 3, (i + 1) % 3, (j + 2) % 3] = Q[(i + 2) % 3, (j + 1) % 3]
+            dKdQ[i + 3, j + 3, (i + 2) % 3, (j + 1) % 3] = Q[(i + 1) % 3, (j + 2) % 3]
+            K[i][j] = Q[i][j] * Q[i][j]
+            K[i][j + 3] = Q[i][(j + 1) % 3] * Q[i][(j + 2) % 3]
+            K[i + 3][j] = Q[(i + 1) % 3][j] * Q[(i + 2) % 3][j]
+            K[i + 3][j + 3] = Q[(i + 1) % 3][(j + 1) % 3] * Q[(i + 2) % 3][(j + 2) % 3] + Q[(i + 1) % 3][(j + 2) % 3] * Q[(i + 2) % 3][(j + 1) % 3]
+
+
+    for i in range(3):
+        for j in range(3):
+            K[i][j + 3] *= 2.0
+            dKdQ[i][j + 3] *= 2.0
+
+    Crot = K.dot(C.dot(K.T))
+    dCrotdQ = numpy.zeros((6, 6, 3, 3))
+    for i in range(3):
+        for j in range(3):
+            dCrotdQ[:, :, i, j] = dKdQ[:, :, i, j].dot(C.dot(K.T)) + K.dot(C.dot(dKdQ[:, :, i, j].T))
+
+    dCrotdas = numpy.zeros((6, 6, 3))
+
+    for i in range(6):
+        for j in range(6):
+            dCrotdas[i, j, 0] = (dCrotdQ[i, j] * dQda).flatten().sum()
+            dCrotdas[i, j, 1] = (dCrotdQ[i, j] * dQdb).flatten().sum()
+            dCrotdas[i, j, 2] = (dCrotdQ[i, j] * dQdy).flatten().sum()
+
+    return Crot, dCrotdas, K
+
+D = numpy.array([[c11, c12, c13, 0, 0, 0],
+                 [c12, c22, c23, 0, 0, 0],
+                 [c13, c23, c33, 0, 0, 0],
+                 [0, 0, 0, c44, 0, 0],
+                 [0, 0, 0, 0, c55, 0],
+                 [0, 0, 0, 0, 0, c66]])
+
+Crot1, dCrotdas, K = fder(D, 0.4, 0.4, 0.0)
+
+D1 = D.copy()
+
+D1[0, 0] *= 1.0001
+D1[1, 1] *= 1.0001
+D1[2, 2] *= 1.0001
+
+Crot2, dCrotdas, K = fder(D1, 0.4, 0.4, 0.0)
+
+dCrotdc11, _, _ = fder(numpy.array([[1, 0, 0, 0, 0, 0],
+                     [0, 1, 0, 0, 0, 0],
+                     [0, 0, 1, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 0]]), 0.4, 0.4, 0.0)
+
+print (Crot2 - Crot1) / (D1[0, 0] - D[0, 0])
+print dCrotdc11
+
+#%%
+D1 = numpy.linalg.solve(K, numpy.linalg.solve(K, Crot).T)
+#%%
+
 aux = "eig.scipy,method:'eigh',tol:1e-5,maxiter:1000".split(',')
 kwargs = {}
 for option in aux[1:]:
@@ -78,7 +168,7 @@ v = FieldVariable('v', 'test', field, primary_var_name = 'u')
 #mtx_d = stiffness_from_youngpoisson(dim, youngs, poisson)
 
 #c11, c12, c44 = 2.30887372458, 0.778064244563, 0.757576236829
-c11, c12, c44 = 1.685, 0.7928, 0.4459
+c11, c12, c44 = 1.24, .934, 0.4610#1.685, 0.7928, 0.4459#
 #c11 = 3.00
 #c12 = 1.5
 #c44 = 0.75
@@ -99,26 +189,28 @@ D = numpy.array([[c11, c12, c13, 0, 0, 0],
                      [0, 0, 0, 0, c55, 0],
                      [0, 0, 0, 0, 0, c66]])
 
-dDdc11 = numpy.array([[1, 0, 0, 0, 0, 0],
+D, _, _ = fder(D, 0.0, 0.0, 0.0)
+
+dDdc11, _, _ = fder(numpy.array([[1, 0, 0, 0, 0, 0],
                      [0, 1, 0, 0, 0, 0],
                      [0, 0, 1, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0]])
+                     [0, 0, 0, 0, 0, 0]]), 0.0, 0.0, 0.0)
 
-dDdc12 = numpy.array([[0, 1, 1, 0, 0, 0],
+dDdc12, _, _ = fder(numpy.array([[0, 1, 1, 0, 0, 0],
                      [1, 0, 1, 0, 0, 0],
                      [1, 1, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0]])
+                     [0, 0, 0, 0, 0, 0]]), 0.0, 0.0, 0.0)
 
-dDdc44 = numpy.array([[0, 0, 0, 0, 0, 0],
+dDdc44, _, _ = fder(numpy.array([[0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 1, 0, 0],
                      [0, 0, 0, 0, 1, 0],
-                     [0, 0, 0, 0, 0, 1]])
+                     [0, 0, 0, 0, 0, 1]]), 0.0, 0.0, 0.0)
 
 def assemble(mtx_d):
     m = Material('m', D=mtx_d, rho=density)
@@ -464,23 +556,30 @@ freqs = numpy.array([109.076,
 323.464])
 
 eigs = (freqs * numpy.pi * 2000) ** 2 / 1e11
-
+#%%
 
 mu = eigs
 
 llogp = []
 youngs = []
 poissons = []
-c11t, c12t, c44t =  1.685, 0.7928, 0.4459#2, 1.0, 1
+c11t, c12t, c44t =  1.24, .934, 0.4610#1.685, 0.7928, 0.4459#2, 1.0, 1
 y = 0.25
-
+a = 0.0
+b = 0.0
+c = 0.0
+#0.2, 0.1, 0.15
 c11s = []
 c12s = []
 c44s = []
 ys = []
+as_ = []
+bs_ = []
+cs_ = []
+
 #%%
 def UgradU(q):
-    c11t, c12t, c44t, y = q
+    c11t, c12t, c44t, a, b, c = q#, y
     c22 = c11t
     c33 = c11t
 
@@ -497,25 +596,48 @@ def UgradU(q):
                      [0, 0, 0, 0, c55, 0],
                      [0, 0, 0, 0, 0, c66]])
 
+    D, Dd, K_ = fder(D, a, b, c)
+
+    dDda = Dd[:, :, 0]
+    dDdb = Dd[:, :, 1]
+    dDdc = Dd[:, :, 2]
+
+    tmp = time.time()
+    dKda, _ = assemble(dDda)
+    dKdb, _ = assemble(dDdb)
+    dKdc, _ = assemble(dDdc)
+
+    dKdc11, _ = assemble(K_.dot(dDdc11.dot(K_.T)))
+    dKdc12, _ = assemble(K_.dot(dDdc12.dot(K_.T)))
+    dKdc44, _ = assemble(K_.dot(dDdc44.dot(K_.T)))
+    #print "Assembly: ", time.time() - tmp
+
     Kt, Mt = assemble(D)
 
+    tmp = time.time()
     eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 1.0)
+    #print "Eigs: ", time.time() - tmp
 
     eigst = eigst[6:]
     evecst = evecst[:, 6:]
+
+    #print eigst
 
     #print list(zip(eigst, eigs))
 
     t = 1 + (mu - eigst)**2 / y**2
 
+    dlda = sum(numpy.array([evecst[:, i].T.dot(dKda.dot(evecst[:, i])) for i in range(evecst.shape[1])]))
+    dldb = sum(numpy.array([evecst[:, i].T.dot(dKdb.dot(evecst[:, i])) for i in range(evecst.shape[1])]))
+    dldc = sum(numpy.array([evecst[:, i].T.dot(dKdc.dot(evecst[:, i])) for i in range(evecst.shape[1])]))
     dldc11 = numpy.array([evecst[:, i].T.dot(dKdc11.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
-    dlpdl = (mu - eigst) / y ** 2
-    dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
-    #dlpdl = ((2 * (mu - eigst)) / (t * y**2))
-    #dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
+    #dlpdl = (mu - eigst) / y ** 2
+    #dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
+    dlpdl = ((2 * (mu - eigst)) / (t * y**2))
+    dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
 
     dlpdl = numpy.array(dlpdl)
 
@@ -523,14 +645,15 @@ def UgradU(q):
     dlpdc12 = dlpdl.dot(dldc12)
     dlpdc44 = dlpdl.dot(dldc44)
 
-    logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
-    #logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
+    #logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
+    logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
+    #E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
 
-    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy])
+    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlda, dldb, dldc])#, dlpdy
 
-current_q = numpy.array([c11t, c12t, c44t, y])
+current_q = numpy.array([c11t, c12t, c44t, a, b, c])#, y
 L = 50
-epsilon = 0.001
+epsilon = 0.00025
 #for ii in range(2000):
 ii = 0
 while len(c11s) < 500:
@@ -552,7 +675,7 @@ while len(c11s) < 500:
             U, gradU = UgradU(q)
             p = p - epsilon * gradU
 
-        #print "New q, H: ", q, U + sum(p ** 2) / 2, U, sum(p ** 2) / 2
+        print "New q, H: ", q, U + sum(p ** 2) / 2, U, sum(p ** 2) / 2
 
     U, gradU = UgradU(q)
     # Make a half step for momentum at the end.
@@ -578,7 +701,10 @@ while len(c11s) < 500:
         c11s.append(current_q[0])
         c12s.append(current_q[1])
         c44s.append(current_q[2])
-        ys.append(current_q[3])
+        #ys.append(current_q[3])
+        as_.append(current_q[3])
+        bs_.append(current_q[4])
+        cs_.append(current_q[5])
 
         print "Accepted ({0} accepts so far): {1}".format(len(c11s), current_q)
         #epsilon *= 1.2
@@ -588,7 +714,8 @@ while len(c11s) < 500:
 
     ii = ii + 1
 #%%
-
+import matplotlib.pyplot as plt
+#%%
 for minv, value, maxv in zip(numpy.sqrt((eigs - 0.35357) * 1e11) / (numpy.pi * 2000), freqs, numpy.sqrt((eigs + 0.35357) * 1e11) / (numpy.pi * 2000)):
     print "[{0:4.2f} {1:4.2f} {2:4.2f}]".format(minv, value, maxv)
 
