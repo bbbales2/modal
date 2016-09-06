@@ -114,7 +114,9 @@ dCrotdc11, _, _ = fder(numpy.array([[1, 0, 0, 0, 0, 0],
 
 print (Crot2 - Crot1) / (D1[0, 0] - D[0, 0])
 print dCrotdc11
-
+#%%
+Crot1, dCrotdas, K = fder(D, 0.1, 0.15, 0.25)
+Crot2, dCrotdas, K = fder(D, -0.1, -0.15, 0.25)
 #%%
 D1 = numpy.linalg.solve(K, numpy.linalg.solve(K, Crot).T)
 #%%
@@ -189,28 +191,28 @@ D = numpy.array([[c11, c12, c13, 0, 0, 0],
                      [0, 0, 0, 0, c55, 0],
                      [0, 0, 0, 0, 0, c66]])
 
-D, _, _ = fder(D, 0.0, 0.0, 0.0)
+D, _, _ = fder(D, -0.1, -0.15, 0.25)
 
 dDdc11, _, _ = fder(numpy.array([[1, 0, 0, 0, 0, 0],
                      [0, 1, 0, 0, 0, 0],
                      [0, 0, 1, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0]]), 0.0, 0.0, 0.0)
+                     [0, 0, 0, 0, 0, 0]]), 0.1, 0.15, 0.25)
 
 dDdc12, _, _ = fder(numpy.array([[0, 1, 1, 0, 0, 0],
                      [1, 0, 1, 0, 0, 0],
                      [1, 1, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0]]), 0.0, 0.0, 0.0)
+                     [0, 0, 0, 0, 0, 0]]), 0.1, 0.15, 0.25)
 
 dDdc44, _, _ = fder(numpy.array([[0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 1, 0, 0],
                      [0, 0, 0, 0, 1, 0],
-                     [0, 0, 0, 0, 0, 1]]), 0.0, 0.0, 0.0)
+                     [0, 0, 0, 0, 0, 1]]), 0.1, 0.15, 0.25)
 
 def assemble(mtx_d):
     m = Material('m', D=mtx_d, rho=density)
@@ -725,7 +727,7 @@ import seaborn
 import pandas
 import matplotlib.pyplot as plt
 
-df = pandas.DataFrame({'c11' : c11s[-200:], 'c12' : c12s[-200:], 'c44' : c44s[-200:], 'y' : ys[-200:]})
+df = pandas.DataFrame({'c11' : c11s[-200:], 'c12' : c12s[-200:], 'c44' : c44s[-200:], 'a' : as_[-200:], 'b' : bs_[-200:], 'c' : cs_[-200:]})
 
 seaborn.pairplot(df)
 plt.gcf().set_size_inches((12, 8))
@@ -733,13 +735,13 @@ plt.show()
 
 import scipy.stats
 
-g = seaborn.PairGrid(df)
-g.map_diag(plt.hist)
-g.map_offdiag(seaborn.kdeplot, n_levels = 6);
-plt.gcf().set_size_inches((12, 8))
-plt.show()
+#g = seaborn.PairGrid(df)
+#g.map_diag(plt.hist)
+#g.map_offdiag(seaborn.kdeplot, n_levels = 6);
+#plt.gcf().set_size_inches((12, 8))
+#plt.show()
 
-for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('y', ys)]:
+for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('a', as_), ('b', as_), ('c', as_)]:
     seaborn.distplot(d[-200:], kde = False, fit = scipy.stats.norm)
     plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-200:]), numpy.std(d[-200:])))
     plt.gcf().set_size_inches((5, 4))
