@@ -130,9 +130,9 @@ eig_conf = Struct(name='evp', kind=aux[0], **kwargs)
 
 output.level = -1
 
-density = 4401.6959210
+density = 8700.0#4401.6959210
 
-dims = numpy.array([0.007753, 0.009057, 0.013199])
+dims = numpy.array([0.011959, 0.013953, 0.019976])#([0.007753, 0.009057, 0.013199])
 dim = len(dims)
 
 shape = [4, 4, 4]
@@ -168,9 +168,9 @@ v = FieldVariable('v', 'test', field, primary_var_name = 'u')
 #poisson = 0.3
 
 #mtx_d = stiffness_from_youngpoisson(dim, youngs, poisson)
-
+#, -0.08594789, -0.17563149, 0.03437309
 #c11, c12, c44 = 2.30887372458, 0.778064244563, 0.757576236829
-c11, c12, c44 = 1.24, .934, 0.4610#1.685, 0.7928, 0.4459#
+c11, c12, c44 = 2.82726684,  1.9424297 ,  1.28273717#1.24, .934, 0.4610#1.685, 0.7928, 0.4459#
 #c11 = 3.00
 #c12 = 1.5
 #c44 = 0.75
@@ -191,28 +191,28 @@ D = numpy.array([[c11, c12, c13, 0, 0, 0],
                      [0, 0, 0, 0, c55, 0],
                      [0, 0, 0, 0, 0, c66]])
 
-D, _, _ = fder(D, -0.1, -0.15, 0.25)
+D, _, _ = fder(D, -0.08594789, -0.17563149, 0.03437309)
 
 dDdc11, _, _ = fder(numpy.array([[1, 0, 0, 0, 0, 0],
                      [0, 1, 0, 0, 0, 0],
                      [0, 0, 1, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0]]), 0.1, 0.15, 0.25)
+                     [0, 0, 0, 0, 0, 0]]), -0.08594789, -0.17563149, 0.03437309)
 
 dDdc12, _, _ = fder(numpy.array([[0, 1, 1, 0, 0, 0],
                      [1, 0, 1, 0, 0, 0],
                      [1, 1, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0]]), 0.1, 0.15, 0.25)
+                     [0, 0, 0, 0, 0, 0]]), -0.08594789, -0.17563149, 0.03437309)
 
 dDdc44, _, _ = fder(numpy.array([[0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 1, 0, 0],
                      [0, 0, 0, 0, 1, 0],
-                     [0, 0, 0, 0, 0, 1]]), 0.1, 0.15, 0.25)
+                     [0, 0, 0, 0, 0, 1]]), -0.08594789, -0.17563149, 0.03437309)
 
 def assemble(mtx_d):
     m = Material('m', D=mtx_d, rho=density)
@@ -557,6 +557,37 @@ freqs = numpy.array([109.076,
 322.249,
 323.464])
 
+freqs = numpy.array([71.25925,
+75.75875,
+86.478,
+89.947375,
+111.150125,
+112.164125,
+120.172125,
+127.810375,
+128.6755,
+130.739875,
+141.70025,
+144.50375,
+149.40075,
+154.35075,
+156.782125,
+157.554625,
+161.0875,
+165.10325,
+169.7615,
+173.44925,
+174.11675,
+174.90625,
+181.11975,
+182.4585,
+183.98625,
+192.68125,
+193.43575,
+198.793625,
+201.901625,
+205.01475])
+
 eigs = (freqs * numpy.pi * 2000) ** 2 / 1e11
 #%%
 
@@ -565,11 +596,11 @@ mu = eigs
 llogp = []
 youngs = []
 poissons = []
-c11t, c12t, c44t =  1.24, .934, 0.4610#1.685, 0.7928, 0.4459#2, 1.0, 1
-y = 0.25
-a = 0.0
-b = 0.0
-c = 0.0
+c11t, c12t, c44t = 2.82726684, 1.9424297, 1.28273717# 1.24, .934, 0.4610#1.685, 0.7928, 0.4459#2, 1.0, 1
+y = 0.15
+a = -0.08594789
+b = -0.17563149
+c = 0.03437309
 #0.2, 0.1, 0.15
 c11s = []
 c12s = []
@@ -581,7 +612,7 @@ cs_ = []
 
 #%%
 def UgradU(q):
-    c11t, c12t, c44t, a, b, c = q#, y
+    c11t, c12t, c44t, y, a, b, c = q#
     c22 = c11t
     c33 = c11t
 
@@ -651,14 +682,16 @@ def UgradU(q):
     logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
     #E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
 
-    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlda, dldb, dldc])#, dlpdy
+    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy, dlda, dldb, dldc])#
 
-current_q = numpy.array([c11t, c12t, c44t, a, b, c])#, y
+current_q = numpy.array([c11t, c12t, c44t, y, a, b, c])#c11t, c12t, c44t, a, b, c
 L = 50
 epsilon = 0.00025
 #for ii in range(2000):
 ii = 0
-while len(c11s) < 500:
+qs = []
+accepts = []
+while True:#len(c11s) < 500:
     q = current_q
     p = numpy.random.randn(len(q)) # independent standard normal variates
 
@@ -677,7 +710,7 @@ while len(c11s) < 500:
             U, gradU = UgradU(q)
             p = p - epsilon * gradU
 
-        print "New q, H: ", q, U + sum(p ** 2) / 2, U, sum(p ** 2) / 2
+        #print "New q, H: ", q, U + sum(p ** 2) / 2, U, sum(p ** 2) / 2
 
     U, gradU = UgradU(q)
     # Make a half step for momentum at the end.
@@ -695,26 +728,35 @@ while len(c11s) < 500:
     # the position at the end of the trajectory or the initial position
     dQ = current_U - proposed_U + current_K - proposed_K
 
-    print "Energy change ({0} samples): ".format(ii + 1), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
-    print "Epsilon: ", epsilon
+    qs.append(q)
+
     if numpy.random.rand() < min(1.0, numpy.exp(dQ)):
         current_q = q # accept
 
-        c11s.append(current_q[0])
-        c12s.append(current_q[1])
-        c44s.append(current_q[2])
+        accepts.append(len(qs) - 1)
+        #c11s.append(current_q[0])
+        #c12s.append(current_q[1])
+        #c44s.append(current_q[2])
         #ys.append(current_q[3])
-        as_.append(current_q[3])
-        bs_.append(current_q[4])
-        cs_.append(current_q[5])
+        #as_.append(current_q[3])
+        #bs_.append(current_q[4])
+        #cs_.append(current_q[5])
 
-        print "Accepted ({0} accepts so far): {1}".format(len(c11s), current_q)
+        print "Accepted ({0} accepts so far): {1}".format(len(accepts), current_q)
         #epsilon *= 1.2
     else:
         print "Rejected: ", current_q
         #epsilon /= 1.4
 
+    print "Energy change ({0} samples, {1} accepts): ".format(ii + 1, len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
+    print "Epsilon: ", epsilon
+
     ii = ii + 1
+#%%
+c11s, c12s, c44s, as_, bs_, cs_ = zip(*[qs[i] for i in accepts])
+#%%
+qs2 = list(qs)
+accepts2 = list(accepts)
 #%%
 import matplotlib.pyplot as plt
 #%%
@@ -741,7 +783,7 @@ import scipy.stats
 #plt.gcf().set_size_inches((12, 8))
 #plt.show()
 
-for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('a', as_), ('b', as_), ('c', as_)]:
+for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('a', as_), ('b', bs_), ('c', cs_)]:
     seaborn.distplot(d[-200:], kde = False, fit = scipy.stats.norm)
     plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-200:]), numpy.std(d[-200:])))
     plt.gcf().set_size_inches((5, 4))
