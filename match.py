@@ -184,6 +184,10 @@ c23 = c12
 c55 = c44
 c66 = c44
 
+a = 0.0
+b = 0.0
+c = 0.0
+
 D = numpy.array([[c11, c12, c13, 0, 0, 0],
                      [c12, c22, c23, 0, 0, 0],
                      [c13, c23, c33, 0, 0, 0],
@@ -191,28 +195,28 @@ D = numpy.array([[c11, c12, c13, 0, 0, 0],
                      [0, 0, 0, 0, c55, 0],
                      [0, 0, 0, 0, 0, c66]])
 
-D, _, _ = fder(D, -0.08594789, -0.17563149, 0.03437309)
+D, _, _ = fder(D, a, b, c)
 
 dDdc11, _, _ = fder(numpy.array([[1, 0, 0, 0, 0, 0],
                      [0, 1, 0, 0, 0, 0],
                      [0, 0, 1, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0]]), -0.08594789, -0.17563149, 0.03437309)
+                     [0, 0, 0, 0, 0, 0]]), a, b, c)
 
 dDdc12, _, _ = fder(numpy.array([[0, 1, 1, 0, 0, 0],
                      [1, 0, 1, 0, 0, 0],
                      [1, 1, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
-                     [0, 0, 0, 0, 0, 0]]), -0.08594789, -0.17563149, 0.03437309)
+                     [0, 0, 0, 0, 0, 0]]), a, b, c)
 
 dDdc44, _, _ = fder(numpy.array([[0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 1, 0, 0],
                      [0, 0, 0, 0, 1, 0],
-                     [0, 0, 0, 0, 0, 1]]), -0.08594789, -0.17563149, 0.03437309)
+                     [0, 0, 0, 0, 0, 1]]), a, b, c)
 
 def assemble(mtx_d):
     m = Material('m', D=mtx_d, rho=density)
@@ -287,36 +291,37 @@ print time.time() - tmp
 
 #%%young = 5
 import matplotlib.pyplot as plt
-freqs = numpy.array([109.076,
-136.503,
-144.899,
-184.926,
-188.476,
-195.562,
-199.246,
-208.460,
-231.220,
-232.630,
-239.057,
-241.684,
-242.159,
-249.891,
-266.285,
-272.672,
-285.217,
-285.670,
-288.796,
-296.976,
-301.101,
-303.024,
-305.115,
-305.827,
-306.939,
-310.428,
-318.000,
-319.457,
-322.249,
-323.464])
+
+freqs = numpy.array([71.25925,
+75.75875,
+86.478,
+89.947375,
+111.150125,
+112.164125,
+120.172125,
+127.810375,
+128.6755,
+130.739875,
+141.70025,
+144.50375,
+149.40075,
+154.35075,
+156.782125,
+157.554625,
+161.0875,
+165.10325,
+169.7615,
+173.44925,
+174.11675,
+174.90625,
+181.11975,
+182.4585,
+183.98625,
+192.68125,
+193.43575,
+198.793625,
+201.901625,
+205.01475])
 
 eigs = (freqs * numpy.pi * 2000) ** 2 / 1e11
 
@@ -326,15 +331,17 @@ mu = eigs
 llogp = []
 youngs = []
 poissons = []
-c11t, c12t, c44t =  2, 1, 0.5#1.685, 0.7928, 0.4459
-y = 1.0
+#c11t, c12t, c44t =  2, 1, 0.5#1.685, 0.7928, 0.4459
+#y = 1.0
 
-c11s = []
-c12s = []
-c44s = []
-ys = []
+#c11s = []
+#c12s = []
+#c44s = []
+#ys = []
 
-for i in range(2000):
+def UgradU(q):
+    c11t, c12t, c44t, y, a, b, c = q#
+    #y, a, b, c = 0.17362318, 0.19585363, -0.2803732, -0.09701904
     c22 = c11t
     c33 = c11t
 
@@ -351,53 +358,141 @@ for i in range(2000):
                      [0, 0, 0, 0, c55, 0],
                      [0, 0, 0, 0, 0, c66]])
 
+    D, Dd, K_ = fder(D, a, b, c)
+
+    dDda = Dd[:, :, 0]
+    dDdb = Dd[:, :, 1]
+    dDdc = Dd[:, :, 2]
+
+    tmp = time.time()
+    dKda, _ = assemble(dDda)
+    dKdb, _ = assemble(dDdb)
+    dKdc, _ = assemble(dDdc)
+
+    dKdc11, _ = assemble(K_.dot(dDdc11.dot(K_.T)))
+    dKdc12, _ = assemble(K_.dot(dDdc12.dot(K_.T)))
+    dKdc44, _ = assemble(K_.dot(dDdc44.dot(K_.T)))
+    #print "Assembly: ", time.time() - tmp
+
     Kt, Mt = assemble(D)
 
+    tmp = time.time()
     eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 1.0)
+    #print "Eigs: ", time.time() - tmp
 
     eigst = eigst[6:]
     evecst = evecst[:, 6:]
 
+    #print eigst
+
     #print list(zip(eigst, eigs))
 
+    t = 1 + (mu - eigst)**2 / y**2
+
+    dlda = numpy.array([evecst[:, i].T.dot(dKda.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+    dldb = numpy.array([evecst[:, i].T.dot(dKdb.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+    dldc = numpy.array([evecst[:, i].T.dot(dKdc.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc11 = numpy.array([evecst[:, i].T.dot(dKdc11.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
-    dlpdl = (mu - eigst) / y ** 2
-    dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
+    #dlpdl = (mu - eigst) / y ** 2
+    #dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
+    dlpdl = 2 * (mu - eigst) / (t * y**2)
+    dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
 
     dlpdl = numpy.array(dlpdl)
 
     dlpdc11 = dlpdl.dot(dldc11)
     dlpdc12 = dlpdl.dot(dldc12)
     dlpdc44 = dlpdl.dot(dldc44)
+    dlpda = dlpdl.dot(dlda)
+    dlpdb = dlpdl.dot(dldb)
+    dlpdc = dlpdl.dot(dldc)
 
-    logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
+    #logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
+    logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
+    #E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
 
+    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy, dlpda, dlpdb, dlpdc])# dlda, dldb, dldc])#, eigst#
+
+q = numpy.array([ 3.05553881, 2.16139498, 1.17935285, 0.1479137, 0.28143762, -0.2803732, -0.09701904])
+ #[3.05903756, 2.16126911, 1.18847201, 0.15285394, 0.24276501, -0.2803732, -0.09701904])
+ #[3.06864815, 2.15470721, 1.16336802, 0.17362318, 0.19585363, -0.2803732, -0.09701904])
+qs = []
+logp, dlogpdq = UgradU(q)
+print "Finite difference, analytical"
+for i in range(7):
+    q2 = q.copy()
+    q2[i] *= 1.000001
+    logp2, dlogpdq2 = UgradU(q2)
+    print (logp2 - logp) / (q2[i] - q[i]), dlogpdq[i]
+print dlogpdq
+#%%
+a, b, c = 0.28143762, 0.0, 0.0
+dDrotdc11, Dd, K_ = fder(dDdc11, a, b, c)
+print dDrotdc11 - K_.dot(dDdc11.dot(K_.T))
+#%%
+c11t, c12t, c44t, y, a, b, c = q#
+a, b, c = 0.28143762, 0.0, 0.0
+#y, a, b, c = 0.17362318, 0.19585363, -0.2803732, -0.09701904
+c22 = c11t
+c33 = c11t
+
+c13 = c12t
+c23 = c12t
+
+c55 = c44t
+c66 = c44t
+
+D = numpy.array([[c11t, c12t, c13, 0, 0, 0],
+                 [c12t, c22, c23, 0, 0, 0],
+                 [c13, c23, c33, 0, 0, 0],
+                 [0, 0, 0, c44t, 0, 0],
+                 [0, 0, 0, 0, c55, 0],
+                 [0, 0, 0, 0, 0, c66]])
+
+D1, Dd, K_ = fder(D, a, b, c)
+
+c11t *= 1.0001
+
+c22 = c11t
+c33 = c11t
+
+c13 = c12t
+c23 = c12t
+
+c55 = c44t
+c66 = c44t
+
+D = numpy.array([[c11t, c12t, c13, 0, 0, 0],
+                 [c12t, c22, c23, 0, 0, 0],
+                 [c13, c23, c33, 0, 0, 0],
+                 [0, 0, 0, c44t, 0, 0],
+                 [0, 0, 0, 0, c55, 0],
+                 [0, 0, 0, 0, 0, c66]])
+
+D2, Dd, K_ = fder(D, a, b, c)
+
+print (D2 - D1) / (c11t - c11t / 1.0001) - dDrotdc11
+#%%
+for i in range(2000):
+    logp, dlogpdq = UgradU(q)
     llogp.append(logp)
-    #llogp.append(-sum(0.5 * (mu - eigst)[:6]**2 / sigma**2))# - 0.5 * (0.3 - poisson)**2 / 0.1**2)
 
-    c11s.append(c11t)
-    c12s.append(c12t)
-    c44s.append(c44t)
-    ys.append(y)
+    qs.append(q)
 
-    print "log likelihood: ", llogp[-1]
-    #print "Parameters: ", c11t, c12t, c44t, y
-    #print ""
+    print "log likelihood: ", logp, dlogpdq
 
-    dlpdc = numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy])
-    dlpdc /= numpy.linalg.norm(dlpdc)
+    dlogpdq /= numpy.linalg.norm(dlogpdq)
 
-    c11t, c12t, c44t, y = dlpdc * 0.01 + [c11t, c12t, c44t, y]
+    q -= dlogpdq * 0.001
 
-    print "New parameters: ", c11t, c12t, c44t, y
-    #print ""
+    print "New parameters: ", q
 
-    c11t = min(5., max(1.0, c11t))
-    c12t = min(3.0, max(.5, c12t))
-    c44t = min(2.0, max(.25, c44t))
+    #c11t = min(5., max(1.0, c11t))
+    #c12t = min(3.0, max(.5, c12t))
+    #c44t = min(2.0, max(.25, c44t))
 
     #print "New parameters: ", c11t, c12t, c44t, y
     #print ""
@@ -613,6 +708,7 @@ cs_ = []
 #%%
 def UgradU(q):
     c11t, c12t, c44t, y, a, b, c = q#
+    #y, a, b, c = 0.17362318, 0.19585363, -0.2803732, -0.09701904
     c22 = c11t
     c33 = c11t
 
@@ -660,16 +756,16 @@ def UgradU(q):
 
     t = 1 + (mu - eigst)**2 / y**2
 
-    dlda = sum(numpy.array([evecst[:, i].T.dot(dKda.dot(evecst[:, i])) for i in range(evecst.shape[1])]))
-    dldb = sum(numpy.array([evecst[:, i].T.dot(dKdb.dot(evecst[:, i])) for i in range(evecst.shape[1])]))
-    dldc = sum(numpy.array([evecst[:, i].T.dot(dKdc.dot(evecst[:, i])) for i in range(evecst.shape[1])]))
+    dlda = numpy.array([evecst[:, i].T.dot(dKda.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+    dldb = numpy.array([evecst[:, i].T.dot(dKdb.dot(evecst[:, i])) for i in range(evecst.shape[1])])
+    dldc = numpy.array([evecst[:, i].T.dot(dKdc.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc11 = numpy.array([evecst[:, i].T.dot(dKdc11.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
     #dlpdl = (mu - eigst) / y ** 2
     #dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
-    dlpdl = ((2 * (mu - eigst)) / (t * y**2))
+    dlpdl = 2 * (mu - eigst) / (t * y**2)
     dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
 
     dlpdl = numpy.array(dlpdl)
@@ -677,12 +773,15 @@ def UgradU(q):
     dlpdc11 = dlpdl.dot(dldc11)
     dlpdc12 = dlpdl.dot(dldc12)
     dlpdc44 = dlpdl.dot(dldc44)
+    dlpda = dlpdl.dot(dlda)
+    dlpdb = dlpdl.dot(dldb)
+    dlpdc = dlpdl.dot(dldc)
 
     #logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
     logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
     #E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
 
-    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy, dlda, dldb, dldc])#
+    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy, dlpda, dlpdb, dlpdc])# dlda, dldb, dldc])#, eigst#
 
 current_q = numpy.array([c11t, c12t, c44t, y, a, b, c])#c11t, c12t, c44t, a, b, c
 L = 50
@@ -753,12 +852,58 @@ while True:#len(c11s) < 500:
 
     ii = ii + 1
 #%%
-c11s, c12s, c44s, as_, bs_, cs_ = zip(*[qs[i] for i in accepts])
+import pickle
+
+f = open('september_7_stuff.pkl', 'w')
+pickle.dump((qs, accepts), f)
+f.close()
+#%%
+c11s, c12s, c44s, ys, as_, bs_, cs_ = zip(*[qs[i] for i in accepts])
 #%%
 qs2 = list(qs)
 accepts2 = list(accepts)
 #%%
+logps = []
+for i, q in enumerate(qs):
+    logp, _ = UgradU(q)
+    logps.append(logp)
+    print "{0} / {1}, {2}, {3}".format(i + 1, len(qs), q, logp)
+#%%
+logp, _, eigst = UgradU(qs[-1])
+#(freqs * numpy.pi * 2000) ** 2 / 1e11
+print "Computed, Real, Difference (Khz)"
+for real, computed in zip(eigs, eigst):
+    computed = numpy.sqrt(computed * 1e11) / (2 * numpy.pi * 1000)
+    real = numpy.sqrt(real * 1e11) / (2 * numpy.pi * 1000)
+    print "{0:10.4f} {1:10.4f} {2:10.4f}".format(computed, real, computed - real)
+#%%
 import matplotlib.pyplot as plt
+
+plt.plot(c11s)
+plt.title('c11')
+plt.show()
+plt.plot(c12s)
+plt.title('c12')
+plt.show()
+plt.plot(c44s)
+plt.title('c44')
+plt.show()
+plt.plot(ys)
+plt.title('ys')
+plt.show()
+plt.plot(as_)
+plt.title('3rd rotation (about x)')
+plt.show()
+plt.plot(bs_)
+plt.title('2nd rotation (about y)')
+plt.show()
+plt.plot(cs_)
+plt.title('1st rotation (about z)')
+plt.show()
+plt.plot(logps)
+plt.title('-log probability of model (smaller is more likely)')
+plt.show()
+
 #%%
 for minv, value, maxv in zip(numpy.sqrt((eigs - 0.35357) * 1e11) / (numpy.pi * 2000), freqs, numpy.sqrt((eigs + 0.35357) * 1e11) / (numpy.pi * 2000)):
     print "[{0:4.2f} {1:4.2f} {2:4.2f}]".format(minv, value, maxv)
@@ -769,7 +914,7 @@ import seaborn
 import pandas
 import matplotlib.pyplot as plt
 
-df = pandas.DataFrame({'c11' : c11s[-200:], 'c12' : c12s[-200:], 'c44' : c44s[-200:], 'a' : as_[-200:], 'b' : bs_[-200:], 'c' : cs_[-200:]})
+df = pandas.DataFrame({'c11' : c11s[-900:-700], 'c12' : c12s[-900:-700], 'c44' : c44s[-900:-700], 'y' : ys[-900:-700], 'a' : as_[-900:-700], 'b' : bs_[-900:-700], 'c' : cs_[-900:-700]})
 
 seaborn.pairplot(df)
 plt.gcf().set_size_inches((12, 8))
@@ -782,10 +927,10 @@ import scipy.stats
 #g.map_offdiag(seaborn.kdeplot, n_levels = 6);
 #plt.gcf().set_size_inches((12, 8))
 #plt.show()
-
+#%%
 for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('a', as_), ('b', bs_), ('c', cs_)]:
-    seaborn.distplot(d[-200:], kde = False, fit = scipy.stats.norm)
-    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-200:]), numpy.std(d[-200:])))
+    seaborn.distplot(d[-900:-700], kde = False, fit = scipy.stats.norm)
+    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-900:-700]), numpy.std(d[-900:-700])))
     plt.gcf().set_size_inches((5, 4))
     plt.show()
 #%%
