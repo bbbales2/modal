@@ -135,7 +135,7 @@ density = 8700.0#4401.6959210
 dims = numpy.array([0.011959, 0.013953, 0.019976])#([0.007753, 0.009057, 0.013199])
 dim = len(dims)
 
-shape = [4, 4, 4]
+shape = [4, 4, 6]
 
 centre = numpy.array([0.0, 0.0, 0.0])
 
@@ -277,7 +277,7 @@ freqs = omegas / (2 * nm.pi)
 
 print 'number |         eigenvalue |  angular frequency |          frequency'
 for ii, eig in enumerate(eigs):
-    print '{0:6d} | {1:17.12e} | {2:17.12e} | {3:17.12e}'.format(ii + 1, eig, omegas[ii], freqs[ii])
+    print '{0:6d} | {1:17.12e} | {2:17.12e} | {3:17.12e} | {4:17.12e}'.format(ii + 1, eig, eigs2[ii], omegas[ii], freqs[ii])
 #%%
 tmp = time.time()
 scipy.sparse.linalg.spsolve(K, M)
@@ -785,7 +785,7 @@ def UgradU(q):
 
 current_q = numpy.array([c11t, c12t, c44t, y, a, b, c])#c11t, c12t, c44t, a, b, c
 L = 50
-epsilon = 0.00025
+epsilon = 0.001
 #for ii in range(2000):
 ii = 0
 qs = []
@@ -858,7 +858,8 @@ f = open('september_7_stuff.pkl', 'w')
 pickle.dump((qs, accepts), f)
 f.close()
 #%%
-c11s, c12s, c44s, ys, as_, bs_, cs_ = zip(*[qs[i] for i in accepts])
+c11s, c12s, c44s, ys, as_, bs_, cs_ = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]
+
 #%%
 qs2 = list(qs)
 accepts2 = list(accepts)
@@ -914,7 +915,7 @@ import seaborn
 import pandas
 import matplotlib.pyplot as plt
 
-df = pandas.DataFrame({'c11' : c11s[-900:-700], 'c12' : c12s[-900:-700], 'c44' : c44s[-900:-700], 'y' : ys[-900:-700], 'a' : as_[-900:-700], 'b' : bs_[-900:-700], 'c' : cs_[-900:-700]})
+df = pandas.DataFrame({'c11' : c11s[-800:], 'c12' : c12s[-800:], 'c44' : c44s[-800:], 'y' : ys[-800:], 'a' : as_[-800:], 'b' : bs_[-800:], 'c' : cs_[-800:]})
 
 seaborn.pairplot(df)
 plt.gcf().set_size_inches((12, 8))
@@ -922,15 +923,15 @@ plt.show()
 
 import scipy.stats
 
-#g = seaborn.PairGrid(df)
-#g.map_diag(plt.hist)
-#g.map_offdiag(seaborn.kdeplot, n_levels = 6);
-#plt.gcf().set_size_inches((12, 8))
-#plt.show()
+g = seaborn.PairGrid(df)
+g.map_diag(plt.hist)
+g.map_offdiag(seaborn.kdeplot, n_levels = 6);
+plt.gcf().set_size_inches((12, 8))
+plt.show()
 #%%
 for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('a', as_), ('b', bs_), ('c', cs_)]:
-    seaborn.distplot(d[-900:-700], kde = False, fit = scipy.stats.norm)
-    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-900:-700]), numpy.std(d[-900:-700])))
+    seaborn.distplot(d[-800:], kde = False, fit = scipy.stats.norm)
+    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-800:]), numpy.std(d[-800:])))
     plt.gcf().set_size_inches((5, 4))
     plt.show()
 #%%
