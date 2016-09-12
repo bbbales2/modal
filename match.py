@@ -920,7 +920,7 @@ import seaborn
 import pandas
 import matplotlib.pyplot as plt
 
-df = pandas.DataFrame({'c11' : c11s[-200:], 'c12' : c12s[-200:], 'c44' : c44s[-200:], 'y' : ys[-200:], 'a' : as_[-200:], 'b' : bs_[-200:], 'c' : cs_[-200:]})
+df = pandas.DataFrame({'c11' : c11s[-1600:], 'c12' : c12s[-1600:], 'c44' : c44s[-1600:], 'y' : ys[-1600:], 'a' : as_[-1600:], 'b' : bs_[-1600:], 'c' : cs_[-1600:]})
 
 seaborn.pairplot(df)
 plt.gcf().set_size_inches((12, 8))
@@ -935,8 +935,8 @@ plt.gcf().set_size_inches((12, 8))
 plt.show()
 #%%
 for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('a', as_), ('b', bs_), ('c', cs_)]:
-    seaborn.distplot(d[-200:], kde = False, fit = scipy.stats.norm)
-    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-200:]), numpy.std(d[-200:])))
+    seaborn.distplot(d[-1600:], kde = False, fit = scipy.stats.norm)
+    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-1600:]), numpy.std(d[-1600:])))
     plt.gcf().set_size_inches((5, 4))
     plt.show()
 #%%
