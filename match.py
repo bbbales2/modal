@@ -694,7 +694,7 @@ llogp = []
 youngs = []
 poissons = []
 
-c11t, c12t, c44t = 2.2,  1.2,  1.20630875# 1.24, .934, 0.4610#1.685, 0.7928, 0.4459#2, 1.0, 1
+c11t, c12t, c44t = 2.2,  2.68,  1.20630875# 1.24, .934, 0.4610#1.685, 0.7928, 0.4459#2, 1.0, 1
 y =  0.10176695
 a = 0.19991014
 b = -0.30910792
@@ -721,6 +721,7 @@ accepts = []
 #%%
 def UgradU(q):
     c11t, c12t, c44t, y, a, b, c = q#
+    #c12t = -(c12tf * c44t * 2.0 - c11t)
     #y, a, b, c = 0.17362318, 0.19585363, -0.2803732, -0.09701904
     c22 = c11t
     c33 = c11t
@@ -952,7 +953,7 @@ import seaborn
 import pandas
 import matplotlib.pyplot as plt
 
-df = pandas.DataFrame({'c11' : c11s[-1600:], 'c12' : c12s[-1600:], 'c44' : c44s[-1600:], 'y' : ys[-1600:], 'a' : as_[-1600:], 'b' : bs_[-1600:], 'c' : cs_[-1600:]})
+df = pandas.DataFrame({'c11' : c11s[-3000:], 'c12' : c12s[-3000:], 'c44' : c44s[-3000:], 'y' : ys[-3000:], 'a' : as_[-3000:], 'b' : bs_[-3000:], 'c' : cs_[-3000:]})
 
 seaborn.pairplot(df)
 plt.gcf().set_size_inches((12, 8))
@@ -967,8 +968,8 @@ plt.gcf().set_size_inches((12, 8))
 plt.show()
 #%%
 for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('a', as_), ('b', bs_), ('c', cs_)]:
-    seaborn.distplot(d[-1600:], kde = False, fit = scipy.stats.norm)
-    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-1600:]), numpy.std(d[-1600:])))
+    seaborn.distplot(d[-3000:], kde = False, fit = scipy.stats.norm)
+    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-3000:]), numpy.std(d[-3000:])))
     plt.gcf().set_size_inches((5, 4))
     plt.show()
 #%%

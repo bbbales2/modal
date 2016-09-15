@@ -47,6 +47,9 @@ zero = sympy.sympify('0')
 pts = [-numpy.sqrt(3.0 / 5.0), 0, numpy.sqrt(3.0 / 5.0)]
 weights = [5.0 / 9.0, 8.0 / 9.0, 5.0 / 9.0]
 
+pts = [-numpy.sqrt(1.0 / 3.0), numpy.sqrt(1.0 / 3.0)]
+weights = [1.0, 1.0]
+
 dpts = [-numpy.sqrt(1.0 / 3.0), numpy.sqrt(1.0 / 3.0)]
 dweights = [1.0, 1.0]
 
