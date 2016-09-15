@@ -379,8 +379,8 @@ def UgradU(q):
     Kt, Mt = assemble(D)
 
     tmp = time.time()
-    eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 1.0)
-    #print "Eigs: ", time.time() - tmp
+    eigst, evecst = scipy.sparse.linalg.eigsh(Kt.tocsc(), 30 + nrbm, M = Mt.tocsc(), sigma = 1.0)
+    print "Eigs: ", time.time() - tmp
 
     eigst = eigst[6:]
     evecst = evecst[:, 6:]
@@ -693,11 +693,12 @@ mu = eigs
 llogp = []
 youngs = []
 poissons = []
-c11t, c12t, c44t = 1.67142046,  0.68589092,  1.23334466# 1.24, .934, 0.4610#1.685, 0.7928, 0.4459#2, 1.0, 1
-y =  0.13401212
-a = 0.24844583
-b = 0.28851131
-c = 0.20557282
+
+c11t, c12t, c44t = 2.2,  1.2,  1.20630875# 1.24, .934, 0.4610#1.685, 0.7928, 0.4459#2, 1.0, 1
+y =  0.10176695
+a = 0.19991014
+b = -0.30910792
+c = -0.21779237
 #0.2, 0.1, 0.15
 c11s = []
 c12s = []
@@ -711,7 +712,7 @@ cs_ = []
 
 current_q = numpy.array([c11t, c12t, c44t, y, a, b, c])#c11t, c12t, c44t, a, b, c
 L = 50
-epsilon = 0.004
+epsilon = 0.002
 #for ii in range(2000):
 ii = 0
 qs = []
@@ -755,8 +756,8 @@ def UgradU(q):
 
     Kt, Mt = assemble(D)
 
-    tmp = time.time()
-    eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 1.0)
+    #tmp = time.time()
+    eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 0.0)
     #print "Eigs: ", time.time() - tmp
 
     eigst = eigst[6:]
@@ -766,7 +767,7 @@ def UgradU(q):
 
     #print list(zip(eigst, eigs))
 
-    t = 1 + (mu - eigst)**2 / y**2
+    #t = 1 + (mu - eigst)**2 / y**2
 
     dlda = numpy.array([evecst[:, i].T.dot(dKda.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldb = numpy.array([evecst[:, i].T.dot(dKdb.dot(evecst[:, i])) for i in range(evecst.shape[1])])
@@ -775,10 +776,10 @@ def UgradU(q):
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
-    #dlpdl = (mu - eigst) / y ** 2
-    #dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
-    dlpdl = 2 * (mu - eigst) / (t * y**2)
-    dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
+    dlpdl = (mu - eigst) / y ** 2
+    dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
+    #dlpdl = 2 * (mu - eigst) / (t * y**2)
+    #dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
 
     dlpdl = numpy.array(dlpdl)
 
@@ -789,11 +790,11 @@ def UgradU(q):
     dlpdb = dlpdl.dot(dldb)
     dlpdc = dlpdl.dot(dldc)
 
-    #logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
-    logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
+    logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
+    #logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
     #E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
 
-    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy, dlpda, dlpdb, dlpdc])# dlda, dldb, dldc])#, eigst#
+    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy, dlpda, dlpdb, dlpdc])## dlda, dldb, dldc])#
 
 while True:#len(c11s) < 500:
     q = current_q

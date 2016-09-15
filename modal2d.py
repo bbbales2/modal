@@ -6,8 +6,9 @@ import pickle
 import time
 import pysparse
 import scipy
+import sympy
 
-N = 50
+N = 10
 
 p = 2700
 young = 6.8
@@ -26,7 +27,80 @@ Y = 1.0
 q = X / N
 w = Y / N
 
-ke = numpy.array([
+Dd = numpy.array([[c11, c12, 0],
+                  [c12, c11, 0],
+                  [0, 0, c44]])
+
+x, y = sympy.symbols('x y')
+
+Nv = [(1 - x) / 2, (1 + x) / 2]
+
+gx = [n.subs(x, x) for n in Nv]
+gy = [n.subs(x, y) for n in Nv]
+
+f = [gx[0] * gy[0], gx[1] * gy[0], gx[1] * gy[1], gx[0] * gy[1]]
+
+B = []
+
+zero = sympy.sympify('0')
+
+pts = [-numpy.sqrt(3.0 / 5.0), 0, numpy.sqrt(3.0 / 5.0)]
+weights = [5.0 / 9.0, 8.0 / 9.0, 5.0 / 9.0]
+
+dpts = [-numpy.sqrt(1.0 / 3.0), numpy.sqrt(1.0 / 3.0)]
+dweights = [1.0, 1.0]
+
+dfx = numpy.zeros((len(f), len(dpts), len(dpts)))
+dfy = numpy.zeros((len(f), len(dpts), len(dpts)))
+
+fv = numpy.zeros((len(f), len(pts), len(pts)))
+
+for k in range(len(f)):
+    fx = sympy.diff(f[k], x)
+    fy = sympy.diff(f[k], y)
+
+    for i in range(len(dpts)):
+        for j in range(len(dpts)):
+            dfx[k, i, j] = fx.evalf(subs = { x : dpts[i], y : dpts[j] })
+            dfy[k, i, j] = fy.evalf(subs = { x : dpts[i], y : dpts[j] })
+
+    for i in range(len(pts)):
+        for j in range(len(pts)):
+            fv[k, i, j] = f[k].evalf(subs = { x : pts[i], y : pts[j] })
+
+ke = numpy.zeros((len(f), len(f), 2, 2))
+
+me = numpy.zeros((len(f), len(f)))
+for a in range(len(f)):
+    for b in range(len(f)):
+
+        fxa = sympy.diff(f[a], x)
+        fya = sympy.diff(f[a], y)
+
+        fxb = sympy.diff(f[b], x)
+        fyb = sympy.diff(f[b], y)
+
+        for i in range(len(dpts)):
+            for j in range(len(dpts)):
+                Ba = numpy.array([[dfx[a, i, j], 0.0],
+                                  [0.0, dfy[a, i, j]],
+                                  [dfy[a, i, j], dfx[a, i, j]]])
+
+                Bb = numpy.array([[dfx[b, i, j], 0.0],
+                                  [0.0, dfy[b, i, j]],
+                                  [dfy[b, i, j], dfx[b, i, j]]])
+
+                ke[a, b] += dweights[i] * dweights[j] * Ba.T.dot(Dd.dot(Bb))
+
+        for i in range(len(pts)):
+            for j in range(len(pts)):
+                me[a, b] += weights[i] * weights[j] * fv[a, i, j] * fv[b, i, j]
+
+me *= p * w * q / 4.0
+#%%
+#ke1 *= w * q / (4.0)
+
+ke1 = numpy.array([
   [
     [
       [(c44 * q)/(3 * w) + (c11 * w)/(3 * q), (c12 + c44)/4],
@@ -101,7 +175,10 @@ ke = numpy.array([
   ]
 ])
 
-me = p * numpy.array([
+print "ke1: ", ke1[0, 1]
+print "ke: ", ke[0, 1]
+#%%
+me1 = p * numpy.array([
   [(q * w)/9, (q * w)/18, (q * w)/36, (q * w)/18],
   [(q * w)/18, (q * w)/9, (q * w)/18, (q * w)/36],
   [(q * w)/36, (q * w)/18, (q * w)/9, (q * w)/18],
@@ -192,14 +269,14 @@ M1 = M1.to_sss()
 #%%
 tmp = time.time()
 S1 = pysparse.precon.ssor(K1)
-kconv, lmbd, Q, it, it_inner = pysparse.jdsym.jdsym(K1, M1, S1, 100, 0.0, 1e-4, 1000, pysparse.itsolvers.pcg, V0 = Q)
+kconv, lmbd, Q, it, it_inner = pysparse.jdsym.jdsym(K1, M1, S1, 30, 0.0, 1e-4, 1000, pysparse.itsolvers.pcg)
 print time.time() - tmp
 #%%
 K = K.tocsc()
 M = M.tocsc()
 #%%
 tmp = time.time()
-eigs, evecs = scipy.sparse.linalg.eigsh(K, 100, M = M, sigma = 0.0)
+eigs, evecs = scipy.sparse.linalg.eigsh(K, 30, M = M, sigma = 0.0)
 print time.time() - tmp
 #%%
 eigsCheck = numpy.array([ 0.01450785,  0.01838007,  0.01866904,  0.01866904,  0.02820598,  0.03850401,
@@ -236,69 +313,6 @@ plt.show()
 plt.imshow(evecs[0].reshape((N + 1, N + 1, 2))[:, :, 0], interpolation = 'NONE')
 plt.show()
 #%%
-idxs = []
-
-for i in range(N):
-    for j in range(N):
-        idxs.append((i, j))
-
-vIds = dict((v, 2 * i) for i, v in enumerate(idxs))
-
-u = numpy.zeros(2 * len(idxs))
-
-K = numpy.zeros((len(u), len(u)))
-
-for i in range(N):
-    for j in range(N):
-        vId = vIds[(i, j)]
-
-        for ii in range(2):
-            for jj in range(2):
-                K[vId + ii, vId + jj] += 1.0 * ke[0, ii, jj]
-
-        for oi, oj, k in zip([i, i - 1, i - 1], [j + 1, j + 1, j], [1, 2, 3]):
-            if oi < 0 or oi >= N or oj < 0 or oj >= N:
-                continue
-
-            ovId = vIds[(oi, oj)]
-
-            for ii in range(2):
-                for jj in range(2):
-                    K[vId + ii, ovId + jj] += ke[k, ii, jj]
-
-K = (K.T + K)
-
-M = numpy.zeros((len(u), len(u)))
-
-for i in range(N):
-    for j in range(N):
-        vId = vIds[(i, j)]
-
-        for ii, jj in zip([0, 1], [0, 1]):
-            M[vId + ii, vId + jj] += 2.0 * me[0]
-
-        for oi, oj, k in zip([i, i - 1, i - 1], [j + 1, j + 1, j], [1, 2, 3]):
-            if oi < 0 or oi >= N or oj < 0 or oj >= N:
-                continue
-
-            ovId = vIds[(oi, oj)]
-
-            for ii, jj in zip([0, 1], [0, 1]):
-                M[vId + ii, ovId + jj] += me[k]
-
-M = M.T + M
-
-eigs, evecs = scipy.linalg.eigh(K, M)#)#
-print eigs[0:10]
-
-#%%
-
-v = numpy.ones(len(u)) * 1.0
-
-v[::2] = 0.0
-
-us = numpy.linalg.solve(K, v)
-
 #%%
 
 us = evecs[:, 5].reshape((N, N, 2))
