@@ -135,7 +135,7 @@ density = 8700.0#4401.6959210
 dims = numpy.array([0.011959, 0.013953, 0.019976])#([0.007753, 0.009057, 0.013199])
 dim = len(dims)
 
-shape = [4, 4, 4]
+shape = [6, 6, 6]
 
 centre = numpy.array([0.0, 0.0, 0.0])
 
@@ -325,6 +325,37 @@ freqs = numpy.array([71.25925,
 201.901625,
 205.01475])
 
+freqs = numpy.array([71.25925,
+75.75875,
+86.478,
+89.947375,
+111.150125,
+112.164125,
+120.172125,
+127.810375,
+128.6755,
+130.739875,
+141.70025,
+144.50375,
+149.40075,
+154.35075,
+156.782125,
+157.554625,
+161.0875,
+165.10325,
+169.7615,
+173.44925,
+174.11675,
+174.90625,
+181.11975,
+182.4585,
+183.98625,
+192.68125,
+193.43575,
+198.793625,
+201.901625,
+205.01475])
+
 eigs = (freqs * numpy.pi * 2000) ** 2 / 1e11
 
 
@@ -342,7 +373,8 @@ poissons = []
 #ys = []
 
 def UgradU(q):
-    c11t, c12t, c44t, y, a, b, c = q#
+    c11t, c12tf, c44t, y, a, b, c = q#
+    c12t = -(c44t * 2.0 / c12tf - c11t)
     #y, a, b, c = 0.17362318, 0.19585363, -0.2803732, -0.09701904
     c22 = c11t
     c33 = c11t
@@ -378,9 +410,9 @@ def UgradU(q):
 
     Kt, Mt = assemble(D)
 
-    tmp = time.time()
-    eigst, evecst = scipy.sparse.linalg.eigsh(Kt.tocsc(), 30 + nrbm, M = Mt.tocsc(), sigma = 1.0)
-    print "Eigs: ", time.time() - tmp
+    #tmp = time.time()
+    eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 0.0)
+    #print "Eigs: ", time.time() - tmp
 
     eigst = eigst[6:]
     evecst = evecst[:, 6:]
@@ -389,7 +421,7 @@ def UgradU(q):
 
     #print list(zip(eigst, eigs))
 
-    t = 1 + (mu - eigst)**2 / y**2
+    #t = 1 + (mu - eigst)**2 / y**2
 
     dlda = numpy.array([evecst[:, i].T.dot(dKda.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldb = numpy.array([evecst[:, i].T.dot(dKdb.dot(evecst[:, i])) for i in range(evecst.shape[1])])
@@ -398,10 +430,10 @@ def UgradU(q):
     dldc12 = numpy.array([evecst[:, i].T.dot(dKdc12.dot(evecst[:, i])) for i in range(evecst.shape[1])])
     dldc44 = numpy.array([evecst[:, i].T.dot(dKdc44.dot(evecst[:, i])) for i in range(evecst.shape[1])])
 
-    #dlpdl = (mu - eigst) / y ** 2
-    #dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
-    dlpdl = 2 * (mu - eigst) / (t * y**2)
-    dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
+    dlpdl = (mu - eigst) / y ** 2
+    dlpdy = sum((-y ** 2 + (eigst - mu) **2) / y ** 3)
+    #dlpdl = 2 * (mu - eigst) / (t * y**2)
+    #dlpdy = sum(numpy.pi * t * ((2 * (mu - eigst) ** 2) / (numpy.pi * t**2 * y**4) - 1 / (numpy.pi * t * y**2)) * y)
 
     dlpdl = numpy.array(dlpdl)
 
@@ -412,13 +444,14 @@ def UgradU(q):
     dlpdb = dlpdl.dot(dldb)
     dlpdc = dlpdl.dot(dldc)
 
-    #logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
-    logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
+    logp = sum(0.5 * (-((eigst - mu) **2 / y**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(y)))
+    #logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
     #E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
 
-    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy, dlpda, dlpdb, dlpdc])# dlda, dldb, dldc])#, eigst#
+    dlpdc12tf = dlpdc12 * 2.0 * c44t / (c12tf**2)
+    return -logp, -numpy.array([dlpdc11 + dlpdc12, dlpdc12tf, dlpdc44 + dlpdc12 * -2 / c12tf, dlpdy, dlpda, dlpdb, dlpdc])## dlda, dldb, dldc])#
 
-q = numpy.array([ 3.05553881, 2.16139498, 1.17935285, 0.1479137, 0.28143762, -0.2803732, -0.09701904])
+q = numpy.array([ 3.05553881, 2.68, 1.17935285, 0.1479137, 0.28143762, -0.2803732, -0.09701904])
  #[3.05903756, 2.16126911, 1.18847201, 0.15285394, 0.24276501, -0.2803732, -0.09701904])
  #[3.06864815, 2.15470721, 1.16336802, 0.17362318, 0.19585363, -0.2803732, -0.09701904])
 qs = []
@@ -430,6 +463,32 @@ for i in range(7):
     logp2, dlogpdq2 = UgradU(q2)
     print (logp2 - logp) / (q2[i] - q[i]), dlogpdq[i]
 print dlogpdq
+#%%
+mu = eigs
+
+llogp = []
+youngs = []
+poissons = []
+
+c11t, c12t, c44t, y, a, b, c = 1.98530593, 0.95, 1.24728305, 0.175, 0.2, 0.3, 0.2
+#0.2, 0.1, 0.15
+c11s = []
+c12s = []
+c44s = []
+ys = []
+as_ = []
+bs_ = []
+cs_ = []
+
+#%%
+
+current_q = numpy.array([c11t, c12t, c44t, y, a, b, c])#c11t, c12t, c44t, a, b, c
+L = 50
+epsilon = 0.002
+#for ii in range(2000):
+ii = 0
+qs = []
+accepts = []
 #%%
 a, b, c = 0.28143762, 0.0, 0.0
 dDrotdc11, Dd, K_ = fder(dDdc11, a, b, c)
@@ -488,9 +547,13 @@ for i in range(2000):
 
     dlogpdq /= numpy.linalg.norm(dlogpdq)
 
+    #idx = numpy.argmax(numpy.abs(dlogpdq))
     q -= dlogpdq * 0.001
+    #q[idx] -= dlogpdq[idx] * 0.001
 
     print "New parameters: ", q
+    #for q_, dl in zip(q, dlogpdq):
+    #    print q_, dl
 
     #c11t = min(5., max(1.0, c11t))
     #c12t = min(3.0, max(.5, c12t))
@@ -654,6 +717,61 @@ freqs = numpy.array([109.076,
 322.249,
 323.464])
 
+
+freqs = numpy.array([71.25925,
+75.75875,
+86.478,
+89.947375,
+111.150125,
+112.164125,
+120.172125,
+127.810375,
+128.6755,
+130.739875,
+141.70025,
+144.50375,
+149.40075,
+154.35075,
+156.782125,
+157.554625,
+161.0875,
+165.10325,
+169.7615,
+173.44925,
+174.11675,
+174.90625,
+181.11975,
+182.4585,
+183.98625,
+192.68125,
+193.43575,
+198.793625,
+201.901625,
+205.01475,
+206.619,
+208.513875,
+208.83525,
+212.22525,
+212.464125,
+221.169625,
+225.01225,
+227.74775,
+228.31175,
+231.4265,
+235.792875,
+235.992375,
+236.73675,
+238.157625,
+246.431125,
+246.797125,
+248.3185,
+251.69425,
+252.97225,
+253.9795,
+256.869875,
+258.23825,
+259.39025])
+
 freqs = numpy.array([71.25925,
 75.75875,
 86.478,
@@ -695,7 +813,7 @@ youngs = []
 poissons = []
 
 c11t, c12t, c44t = 2.2,  2.68,  1.20630875# 1.24, .934, 0.4610#1.685, 0.7928, 0.4459#2, 1.0, 1
-y =  0.10176695
+y =  0.25
 a = 0.19991014
 b = -0.30910792
 c = -0.21779237
@@ -719,9 +837,11 @@ qs = []
 accepts = []
 
 #%%
+#ys = []
+
 def UgradU(q):
-    c11t, c12t, c44t, y, a, b, c = q#
-    #c12t = -(c12tf * c44t * 2.0 - c11t)
+    c11t, c12tf, c44t, y, a, b, c = q#
+    c12t = -(c44t * 2.0 / c12tf - c11t)
     #y, a, b, c = 0.17362318, 0.19585363, -0.2803732, -0.09701904
     c22 = c11t
     c33 = c11t
@@ -795,7 +915,8 @@ def UgradU(q):
     #logp = sum(numpy.log(1 / (numpy.pi *  (1 + (mu - eigst)**2 / y**2) * y)))
     #E^(-((-u + x)^2/(2 s^2)))/(Sqrt[2 \[Pi]] Sqrt[s^2])
 
-    return -logp, -numpy.array([dlpdc11, dlpdc12, dlpdc44, dlpdy, dlpda, dlpdb, dlpdc])## dlda, dldb, dldc])#
+    dlpdc12tf = dlpdc12 * 2.0 * c44t / (c12tf**2)
+    return -logp, -numpy.array([dlpdc11 + dlpdc12, dlpdc12tf, dlpdc44 + dlpdc12 * -2 / c12tf, dlpdy, dlpda, dlpdb, dlpdc])## dlda, dldb, dldc])### dlda, dldb, dldc])#
 
 while True:#len(c11s) < 500:
     q = current_q
@@ -953,7 +1074,7 @@ import seaborn
 import pandas
 import matplotlib.pyplot as plt
 
-df = pandas.DataFrame({'c11' : c11s[-3000:], 'c12' : c12s[-3000:], 'c44' : c44s[-3000:], 'y' : ys[-3000:], 'a' : as_[-3000:], 'b' : bs_[-3000:], 'c' : cs_[-3000:]})
+df = pandas.DataFrame({'c11' : c11s[-650:], 'c12' : c12s[-650:], 'c44' : c44s[-650:], 'y' : ys[-650:], 'a' : as_[-650:], 'b' : bs_[-650:], 'c' : cs_[-650:]})
 
 seaborn.pairplot(df)
 plt.gcf().set_size_inches((12, 8))
@@ -967,11 +1088,24 @@ g.map_offdiag(seaborn.kdeplot, n_levels = 6);
 plt.gcf().set_size_inches((12, 8))
 plt.show()
 #%%
-for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('a', as_), ('b', bs_), ('c', cs_)]:
-    seaborn.distplot(d[-3000:], kde = False, fit = scipy.stats.norm)
-    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-3000:]), numpy.std(d[-3000:])))
+for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('y', ys), ('a', as_), ('b', bs_), ('c', cs_)]:
+    seaborn.distplot(d[-650:], kde = False, fit = scipy.stats.norm)
+    plt.title("Dist. {0} w/ mean {1:0.4f} and std. {2:0.4f}".format(name, numpy.mean(d[-650:]), numpy.std(d[-650:])))
     plt.gcf().set_size_inches((5, 4))
     plt.show()
+
+#%%
+import sklearn.mixture
+
+qs2 = numpy.array(qs)
+
+gmm = sklearn.mixture.GMM(2)
+gmm.fit(qs2[-650:])
+for i in range(2):
+    print "Option {0}, weight {1:.3f}".format(i, gmm.weights_[i])
+    for j, name in enumerate(['c11', 'c12', 'c44', 'y', 'a', 'b', 'c']):
+        print u"{0} {1:.2e} \u00B1 {2:.2e}".format(name, gmm.means_[i, j], gmm.covars_[i, j])
+
 #%%
 plt.plot(c11s, c12s)
 plt.ylabel('c12')

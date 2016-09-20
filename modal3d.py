@@ -110,7 +110,7 @@ for a in range(len(f)):
                 for k in range(len(pts)):
                     me[a, b] += weights[i] * weights[j] * weights[k] * fv[a, i, j, k] * fv[b, i, j, k]
 
-ke *= w * q * r / 8.0
+ke *= 20#w * q * r / 8.0
 me *= p * w * q * r / 8.0
 
 #%%
