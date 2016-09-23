@@ -77,36 +77,32 @@ print "Building derivs {0}!".format(time.time() - tmp)
 #%%
 tmp = time.time()
 
-#K = numpy.zeros((len(basis), 3, len(basis), 3))
-#for i in range(len(basis)):
-#    for j in range(len(basis)):
-#        c = numpy.array([[c11 * dp[i, j, 0, 0] + c44 * dp[i, j, 1, 1] + c44 * dp[i, j, 2, 2], c44 * dp[i, j, 1, 0] + c12 * dp[i, j, 0, 1], c44 * dp[i, j, 2, 0] + c12 * dp[i, j, 0, 2]],
-#                        [c12 * dp[i, j, 1, 0] + c44 * dp[i, j, 0, 1], c44 * dp[i, j, 0, 0] + c11 * dp[i, j, 1, 1] + c44 * dp[i, j, 2, 2], c44 * dp[i, j, 2, 1] + c12 * dp[i, j, 1, 2]],
-#                        [c12 * dp[i, j, 2, 0] + c44 * dp[i, j, 0, 2], c12 * dp[i, j, 2, 1] + c44 * dp[i, j, 1, 2], c44 * dp[i, j, 0, 0] + c44 * dp[i, j, 1, 1] + c11 * dp[i, j, 2, 2]]])
-
-#        K[i, :, j, :] = c
-K = numpy.array([[c11 * dp[:, :, 0, 0] + c44 * dp[:, :, 1, 1] + c44 * dp[:, :, 2, 2], c44 * dp[:, :, 1, 0] + c12 * dp[:, :, 0, 1], c44 * dp[:, :, 2, 0] + c12 * dp[:, :, 0, 2]],
-                 [c12 * dp[:, :, 1, 0] + c44 * dp[:, :, 0, 1], c44 * dp[:, :, 0, 0] + c11 * dp[:, :, 1, 1] + c44 * dp[:, :, 2, 2], c44 * dp[:, :, 2, 1] + c12 * dp[:, :, 1, 2]],
-                 [c12 * dp[:, :, 2, 0] + c44 * dp[:, :, 0, 2], c12 * dp[:, :, 2, 1] + c44 * dp[:, :, 1, 2], c44 * dp[:, :, 0, 0] + c44 * dp[:, :, 1, 1] + c11 * dp[:, :, 2, 2]]])
-
-
-K = numpy.rollaxis(K, 1, 3)
-K = K.reshape(3 * len(basis), 3 * len(basis), order = 'F')
-
 print "Building stiffness {0}".format(time.time() - tmp)
 
 import matplotlib.pyplot as plt
 
+def buildKM(c11, c12, c44):
+    K = numpy.array([[c11 * dp[:, :, 0, 0] + c44 * dp[:, :, 1, 1] + c44 * dp[:, :, 2, 2], c44 * dp[:, :, 1, 0] + c12 * dp[:, :, 0, 1], c44 * dp[:, :, 2, 0] + c12 * dp[:, :, 0, 2]],
+                     [c12 * dp[:, :, 1, 0] + c44 * dp[:, :, 0, 1], c44 * dp[:, :, 0, 0] + c11 * dp[:, :, 1, 1] + c44 * dp[:, :, 2, 2], c44 * dp[:, :, 2, 1] + c12 * dp[:, :, 1, 2]],
+                     [c12 * dp[:, :, 2, 0] + c44 * dp[:, :, 0, 2], c12 * dp[:, :, 2, 1] + c44 * dp[:, :, 1, 2], c44 * dp[:, :, 0, 0] + c44 * dp[:, :, 1, 1] + c11 * dp[:, :, 2, 2]]])
+
+    K = numpy.rollaxis(K, 1, 3)
+    K = K.reshape(3 * len(basis), 3 * len(basis), order = 'F')
+
+    M = numpy.array([[p * pv[:, :], 0 * pv[:, :], 0 * pv[:, :]],
+                     [0 * pv[:, :], p * pv[:, :], 0 * pv[:, :]],
+                     [0 * pv[:, :], 0 * pv[:, :], p * pv[:, :]]])
+
+    M = numpy.rollaxis(M, 1, 3)
+    M = M.reshape(3 * len(basis), 3 * len(basis), order = 'F')
+
+    return K, M
+
+K, M = buildKM(c11, c12, c44)
+
 tmp = time.time()
 
 #M = numpy.zeros((3 * len(basis), 3 * len(basis)))
-
-M = numpy.array([[p * pv[:, :], 0 * pv[:, :], 0 * pv[:, :]],
-                 [0 * pv[:, :], p * pv[:, :], 0 * pv[:, :]],
-                 [0 * pv[:, :], 0 * pv[:, :], p * pv[:, :]]])
-
-M = numpy.rollaxis(M, 1, 3)
-M = M.reshape(3 * len(basis), 3 * len(basis), order = 'F')
 
 #for i in range(len(basis)):
 #    for j in range(len(basis)):

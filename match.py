@@ -130,9 +130,9 @@ eig_conf = Struct(name='evp', kind=aux[0], **kwargs)
 
 output.level = -1
 
-density = 8700.0#4401.6959210
+density = 4401.6959210#8700.0
 
-dims = numpy.array([0.011959, 0.013953, 0.019976])#([0.007753, 0.009057, 0.013199])
+dims = numpy.array([0.007753, 0.009057, 0.013199])#([0.011959, 0.013953, 0.019976])#([0.007753, 0.009057, 0.013199])
 dim = len(dims)
 
 shape = [6, 6, 6]
@@ -277,7 +277,7 @@ freqs = omegas / (2 * nm.pi)
 
 print 'number |         eigenvalue |  angular frequency |          frequency'
 for ii, eig in enumerate(eigs):
-    print '{0:6d} | {1:17.12e} | {2:17.12e} | {3:17.12e} | {4:17.12e}'.format(ii + 1, eig, eigs2[ii], omegas[ii], freqs[ii])
+    print '{0:6d} | {1:17.12e} | {2:17.12e} | {3:17.12e} | {4:17.12e}'.format(ii + 1, eig, eigs[ii], omegas[ii], freqs[ii])
 #%%
 eigs2 = eigs.copy()
 #%%
@@ -717,7 +717,7 @@ freqs = numpy.array([109.076,
 322.249,
 323.464])
 
-
+#%%
 freqs = numpy.array([71.25925,
 75.75875,
 86.478,
@@ -802,7 +802,7 @@ freqs = numpy.array([71.25925,
 198.793625,
 201.901625,
 205.01475])
-
+#%%
 eigs = (freqs * numpy.pi * 2000) ** 2 / 1e11
 #%%
 
@@ -880,6 +880,8 @@ def UgradU(q):
     #tmp = time.time()
     eigst, evecst = scipy.sparse.linalg.eigsh(Kt, 30 + nrbm, M = Mt, sigma = 0.0)
     #print "Eigs: ", time.time() - tmp
+
+    print eigst[6:]
 
     eigst = eigst[6:]
     evecst = evecst[:, 6:]
