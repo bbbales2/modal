@@ -11,6 +11,12 @@ pyximport.install(reload_support = True)
 import polybasis
 reload(polybasis)
 
+import sys
+
+from rotations import symmetry
+from rotations import quaternion
+from rotations import inv_rotations
+
 N = 8
 
 density = 8700.0e-3#4401.695921e-3
@@ -57,7 +63,30 @@ freqs = numpy.array([71.25925,
 193.43575,
 198.793625,
 201.901625,
-205.01475])
+205.01475,
+206.619,
+208.513875,
+208.83525,
+212.22525,
+212.464125,
+221.169625,
+225.01225,
+227.74775,
+228.31175,
+231.4265,
+235.792875,
+235.992375,
+236.73675,
+238.157625,
+246.431125,
+246.797125,
+248.3185,
+251.69425,
+252.97225,
+253.9795,
+256.869875,
+258.23825,
+259.39025])
 
 data = (freqs * numpy.pi * 2000) ** 2 / 1e11
 
@@ -144,11 +173,12 @@ C, dCda, dCdb, dCdy, K = polybasis.buildRot(C, a, b, y)
 K, M = polybasis.buildKM(C, dp, pv, density)
 print "Build KM: ", time.time() - tmp
 
-eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 35))
+eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 59))
 
 for eig1, eigs2 in zip(eigs, data):
     print eig1, eigs2
 #%%
+
 dp1, pv1, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasis.build(N, X, Y, Z)
 
 C = numpy.array([[c11, c12, c12, 0, 0, 0],
@@ -292,9 +322,12 @@ for i in range(3):
 
 #%%
 
-current_q = numpy.array([2.5e-1,  2.68,  1.25e-1,  0.28, 0.011959e1, 0.013953e1, 0.019976e1, 0.0, 0.0, 0.0])
+current_q = numpy.array([2.0e-1,  2.68,  1.0e-1,  0.28, 0.011959e1, 0.013953e1, 0.019976e1, 0.0, 0.0, 0.0])
+#current_q = numpy.array([0.55312475, 2.41360315, 0.11599106, 0.24451494, 0.11959, 0.13953, 0.19976, 3.11268665, 0.05994049, 2.91322636])
+#current_q = numpy.array([[ 0.20047024  2.69014669  0.13355824  0.28        0.11959     0.13953
+#  0.19976    -0.02659105 -0.00309443 -0.05464506]])
 L = 100
-epsilon = 0.0001
+epsilon = 0.00005
 
 qs = []
 logps = []
@@ -328,6 +361,7 @@ def UgradU(q):
     c12 = -(c44 * 2.0 / anisotropic - c11)
     #print q#X, Y, Z
 
+    #tmp = time.time()
     dp, pv, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasis.build(N, X, Y, Z)
 
     C = numpy.array([[c11, c12, c12, 0, 0, 0],
@@ -336,7 +370,9 @@ def UgradU(q):
                      [0, 0, 0, c44, 0, 0],
                      [0, 0, 0, 0, c44, 0],
                      [0, 0, 0, 0, 0, c44]])
+    #print "Basis build: ", time.time() - tmp
 
+    #tmp = time.time()
     C, dCda, dCdb, dCdy, K = polybasis.buildRot(C, a, b, y)
 
     dCdc11 = K.dot(numpy.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -359,6 +395,7 @@ def UgradU(q):
                                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
                                 [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
                                 [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]]).dot(K.T))
+    #print "Rotation time: ", time.time() - tmp
 
     #tmp = time.time()
     dKda, _ = polybasis.buildKM(dCda, dp, pv, density)
@@ -378,9 +415,11 @@ def UgradU(q):
 
     #tmp = time.time()
     #tmp = time.time()
-    eigst, evecst = scipy.linalg.eigh(K, M, eigvals = (6, 35))
+    eigst, evecst = scipy.linalg.eigh(K, M, eigvals = (6, 58))
     #print 'Eigs: ', time.time() - tmp
-    #print eigst[6:]
+    #for e1, e2 in zip(eigst, data):
+    #    print e1 - e2
+    #print "\n".join(str(zip(eigst[6:], data)))
     #print "Eigs: ", time.time() - tmp
 
     eigst = eigst[:]
@@ -432,6 +471,7 @@ while True:
         # Make a full step for the position
         q = q + epsilon * p
 
+        #q[-3:] = inv_rotations.qu2eu(symmetry.Symmetry.Cubic.fzQuat(quaternion.Quaternion(inv_rotations.eu2qu(q[-3:]))))
         # Make a full step for the momentum, except at end of trajectory
         if i != L - 1:
             U, gradU = UgradU(q)
@@ -446,8 +486,8 @@ while True:
     U, gradU = UgradU(q)
     # Make a half step for momentum at the end.
     p = p - epsilon * gradU / 2
-
     p[-6:-3] = 0
+
     # Negate momentum at end of trajectory to make the proposal symmetric
     p = -p
     # Evaluate potential and kinetic energies at start and end of trajectory
@@ -476,19 +516,22 @@ while True:
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
     print "Epsilon: ", epsilon
 #%%
-c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_  = [numpy.array(a)[-2000:] for a in zip(*[qs[i] for i in accepts])]#
+c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_  = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]#
 import matplotlib.pyplot as plt
 
-for name, data in zip(['c11', 'anisotropics', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 'eu[0]', 'eu[1]', 'eu[2]'],
+for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 'eu[0]', 'eu[1]', 'eu[2]'],
                       [c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_]):
-    plt.plot(data)
-    plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data), numpy.std(data)))
+    plt.plot(data1)
+    plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
     plt.show()
+    #seaborn.distplot(d[-650:], kde = False, fit = scipy.stats.norm)
+    #plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
+    #plt.show()
 
-plt.plot(as_, ys_)
-plt.ylabel('eu[2]s')
-plt.xlabel('eu[0]s')
-plt.show()
+#plt.plot(as_, ys_)
+#plt.ylabel('eu[2]s')
+#plt.xlabel('eu[0]s')
+#plt.show()
 #%%
 
 import seaborn
@@ -516,48 +559,6 @@ for name, d in [('c11', c11s), ('c12', c12s), ('c44', c44s), ('y', ys)]:
     plt.show()
 
 #%%
-import math
-
-def eu2ax(eu):
-	t = math.tan(eu[1] / 2.0)
-	sigma = (eu[0] + eu[2]) / 2.0
-	tau = math.sqrt(t * t + math.sin(sigma) * math.sin(sigma))
-	if abs(tau) <= 2.0 * epsilon:
-		return [0.0, 0.0, 1.0, 0.0] # handle 0 rotation
-	delta = (eu[0] - eu[2]) / 2.0
-	alpha = math.pi if abs(sigma - math.pi / 2.0) <= epsilon else 2.0 * math.atan(tau / math.cos(sigma))
-	n = [-1.0 / math.copysign(tau, alpha)] * 3
-	n[0] *= t * math.cos(delta)
-	n[1] *= t * math.sin(delta)
-	n[2] *= math.sin(sigma)
-
-	# normalize
-	mag = math.sqrt(math.fsum([x * x for x in n]))
-	n = [x / mag for x in n]
-
-	# handle ambiguous case (rotation angle of pi)
-	alpha = abs(alpha)
-	if alpha + epsilon >= math.pi:
-		return orientAxis(n) + [math.pi]
-	return n + [alpha]
-
-def eu2om(eu):
-	s = [math.sin(x) for x in eu]
-	c = [math.cos(x) for x in eu]
-	s = [0.0 if abs(x) <= epsilon else x for x in s]
-	c = [0.0 if abs(x) <= epsilon else x for x in c]
-
-	om = [[0.0] * 3 for i in range(3)]
-	om[0][0] =  c[0] * c[2] - s[0] * c[1] * s[2]
-	om[0][1] =  s[0] * c[2] + c[0] * c[1] * s[2]
-	om[0][2] =  s[1] * s[2]
-	om[1][0] = -c[0] * s[2] - s[0] * c[1] * c[2]
-	om[1][1] = -s[0] * s[2] + c[0] * c[1] * c[2]
-	om[1][2] =  s[1] * c[2]
-	om[2][0] =  s[0] * s[1]
-	om[2][1] = -c[0] * s[1]
-	om[2][2] =  c[1]
-	return om
 
 def getRotations(a, b, y):
 
@@ -582,12 +583,10 @@ def getRotations(a, b, y):
 
 Qs = []
 for a, b, y in zip(as_, bs_, ys_):
-    Qs.append(numpy.linalg.solve(eu2om((a, b, y)), [1.0, 0.0, 0.0]))
+    Qs.append(numpy.dot(inv_rotations.eu2om((a, b, y)), [1.0, 0.0, 0.0]))
 
 Qs = numpy.array(Qs)
-#%%
-Qs = Qs.reshape((len(Qs), -1))
-#%%
+
 labels = []
 for i in range(Qs.shape[1]):
     plt.plot(Qs[:, i])
@@ -595,4 +594,4 @@ for i in range(Qs.shape[1]):
 plt.legend(labels)
 plt.show()
 #%%
-UgradU([1.6, 1.0, 0.45, 0.25])
+UgradU(qs[accepts[-1]])
