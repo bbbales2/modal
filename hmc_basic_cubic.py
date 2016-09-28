@@ -10,23 +10,23 @@ pyximport.install(reload_support = True)
 import polybasis
 reload(polybasis)
 
-from rotations import symmetry
-from rotations import quaternion
-from rotations import inv_rotations
+#from rotations import symmetry
+#from rotations import quaternion
+#from rotations import inv_rotations
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
 N = 8
 
-density = 4401.695921e-3#8700.0e-3#
+density = 4401.695921#8700.0e-3#
 
 # Dimensions -- watch the scaling
-X = 0.007753e1#0.011959e1#
-Y = 0.009057e1#0.013953e1#
-Z = 0.013199e1#0.019976e1#
+X = 0.007753#0.011959e1#
+Y = 0.009057#0.013953e1#
+Z = 0.013199#0.019976e1#
 
-c11 = 2.0e-1
+c11 = 2.0
 anisotropic = 1.0
-c44 = 1.0e-1
+c44 = 1.0
 c12 = -(c44 * 2.0 / anisotropic - c11)
 
 # Standard deviation around each mode prediction
@@ -36,16 +36,6 @@ std = 1.0
 a = 0.0
 b = 0.0
 y = 0.0
-
-# These are the two HMC parameters
-#   L is the number of timesteps to take -- use this if samples in the traceplots don't look random
-#   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
-#       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
-L = 100
-epsilon = 0.000025
-
-# Set this to true to debug the L and eps values
-debug = False#True
 
 # These are the sampled modes in khz
 freqs = numpy.array([71.25925,
@@ -148,6 +138,17 @@ logps = []
 accepts = []
 
 current_q = numpy.array([c11, anisotropic, c44, std])
+#%%
+
+# These are the two HMC parameters
+#   L is the number of timesteps to take -- use this if samples in the traceplots don't look random
+#   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
+#       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
+L = 50
+epsilon = 0.0005
+
+# Set this to true to debug the L and eps values
+debug = False#True
 
 #%%
 dp, pv, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasis.build(N, X, Y, Z)
