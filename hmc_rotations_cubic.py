@@ -10,23 +10,23 @@ pyximport.install(reload_support = True)
 import polybasis
 reload(polybasis)
 
-from rotations import symmetry
-from rotations import quaternion
-from rotations import inv_rotations
+#from rotations import symmetry
+#from rotations import quaternion
+#from rotations import inv_rotations
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 8
+N = 10
 
-density = 4401.695921e-3#8700.0e-3#
+density = 8700.0#4401.695921#
 
 # Dimensions -- watch the scaling
-X = 0.007753e1#0.011959e1#
-Y = 0.009057e1#0.013953e1#
-Z = 0.013199e1#0.019976e1#
+X = 0.011959#0.007753#
+Y = 0.013953#0.009057#
+Z = 0.019976#0.013199#
 
-c11 = 2.0e-1
+c11 = 2.0
 anisotropic = 1.0
-c44 = 1.0e-1
+c44 = 1.0
 c12 = -(c44 * 2.0 / anisotropic - c11)
 
 # Standard deviation around each mode prediction
@@ -36,16 +36,6 @@ std = 1.0
 a = 0.0
 b = 0.0
 y = 0.0
-
-# These are the two HMC parameters
-#   L is the number of timesteps to take -- use this if samples in the traceplots don't look random
-#   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
-#       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
-L = 100
-epsilon = 0.000025
-
-# Set this to true to debug the L and eps values
-debug = False#True
 
 # These are the sampled modes in khz
 freqs = numpy.array([71.25925,
@@ -102,45 +92,6 @@ freqs = numpy.array([71.25925,
 258.23825,
 259.39025])
 
-freqs = numpy.array([109.076,
-136.503,
-144.899,
-184.926,
-188.476,
-195.562,
-199.246,
-208.460,
-231.220,
-232.630,
-239.057,
-241.684,
-242.159,
-249.891,
-266.285,
-272.672,
-285.217,
-285.670,
-288.796,
-296.976,
-301.101,
-303.024,
-305.115,
-305.827,
-306.939,
-310.428,
-318.000,
-319.457,
-322.249,
-323.464,
-324.702,
-334.687,
-340.427,
-344.087,
-363.798,
-364.862,
-371.704,
-373.248])
-
 data = (freqs * numpy.pi * 2000) ** 2 / 1e11
 
 qs = []
@@ -148,6 +99,16 @@ logps = []
 accepts = []
 
 current_q = numpy.array([c11, anisotropic, c44, std, X, Y, Z, a, b, y])
+#%%
+# These are the two HMC parameters
+#   L is the number of timesteps to take -- use this if samples in the traceplots don't look random
+#   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
+#       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
+L = 50
+epsilon = 0.001
+
+# Set this to true to debug the L and eps values
+debug = False#True#
 
 #%%
 def UgradU(q):
@@ -258,7 +219,7 @@ while True:
     U, gradU = UgradU(q)
     p = p - epsilon * gradU / 2
 
-    p[-6:] = 0
+    p[-6:-3] = 0
 
     # Alternate full steps for position and momentum
     for i in range(L):
@@ -271,7 +232,7 @@ while True:
             U, gradU = UgradU(q)
             p = p - epsilon * gradU
 
-            p[-6:] = 0
+            p[-6:-3] = 0
 
         if debug:
             print "New q: ", q
@@ -281,7 +242,7 @@ while True:
     U, gradU = UgradU(q)
     # Make a half step for momentum at the end.
     p = p - epsilon * gradU / 2
-    p[-6:] = 0
+    p[-6:-3] = 0
 
     # Negate momentum at end of trajectory to make the proposal symmetric
     p = -p
@@ -313,8 +274,8 @@ while True:
 c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_  = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]#
 import matplotlib.pyplot as plt
 
-for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 'eu[0]', 'eu[1]', 'eu[2]'],
-                      [c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_]):
+for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 'eu[0]', 'eu[1]', 'eu[2]', '-log probs'],
+                      [c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_, logps]):
     plt.plot(data1)
     plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
     plt.show()
@@ -327,6 +288,7 @@ for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 
 #plt.xlabel('eu[0]s')
 #plt.show()
 #%%
+c11, anisotropic, c44, _, X, Y, Z, a, b, y = qs[accepts[-1]]
 c12 = -(c44 * 2.0 / anisotropic - c11)
 
 dp, pv, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasis.build(N, X, Y, Z)

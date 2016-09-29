@@ -145,7 +145,7 @@ current_q = numpy.array([c11, anisotropic, c44, std])
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
 L = 50
-epsilon = 0.0005
+epsilon = 0.0001
 
 # Set this to true to debug the L and eps values
 debug = False#True
@@ -196,9 +196,9 @@ def UgradU(q):
     #print 'Assemble: ', time.time() - tmp
 
     #tmp = time.time()
-    #tmp = time.time()
+    tmp = time.time()
     eigst, evecst = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(data) - 1))
-    #print 'Eigs: ', time.time() - tmp
+    print 'Eigs: ', time.time() - tmp
     #for e1, e2 in zip(eigst, data):
     #    print e1 - e2
     #print "\n".join(str(zip(eigst[6:], data)))
