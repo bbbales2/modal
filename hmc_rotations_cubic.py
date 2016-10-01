@@ -105,7 +105,7 @@ current_q = numpy.array([c11, anisotropic, c44, std, X, Y, Z, a, b, y])
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
 L = 50
-epsilon = 0.001
+epsilon = 0.0001
 
 # Set this to true to debug the L and eps values
 debug = False#True#
@@ -219,7 +219,7 @@ while True:
     U, gradU = UgradU(q)
     p = p - epsilon * gradU / 2
 
-    p[-6:-3] = 0
+    p[-6:] = 0
 
     # Alternate full steps for position and momentum
     for i in range(L):
@@ -232,7 +232,7 @@ while True:
             U, gradU = UgradU(q)
             p = p - epsilon * gradU
 
-            p[-6:-3] = 0
+            p[-6:] = 0
 
         if debug:
             print "New q: ", q
@@ -242,7 +242,7 @@ while True:
     U, gradU = UgradU(q)
     # Make a half step for momentum at the end.
     p = p - epsilon * gradU / 2
-    p[-6:-3] = 0
+    p[-6:] = 0
 
     # Negate momentum at end of trajectory to make the proposal symmetric
     p = -p
@@ -274,10 +274,10 @@ while True:
 c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_  = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]#
 import matplotlib.pyplot as plt
 
-for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 'eu[0]', 'eu[1]', 'eu[2]', '-log probs'],
+for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 'eu[0]', 'eu[1]', 'eu[2]', '-log probs'],
                       [c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_, logps]):
     plt.plot(data1)
-    plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
+    plt.title('{0}, $\mu$ = {1:.3f}, $\sigma$ = {2:.3f}'.format(name, numpy.mean(data1[-400:]), numpy.std(data1[-400:])), fontsize = 24)
     plt.show()
     #seaborn.distplot(d[-650:], kde = False, fit = scipy.stats.norm)
     #plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
@@ -287,6 +287,48 @@ for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 
 #plt.ylabel('eu[2]s')
 #plt.xlabel('eu[0]s')
 #plt.show()
+#%%
+c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_  = [numpy.array(a)[-400:] for a in zip(*[qs[i] for i in accepts])]#
+import matplotlib.pyplot as plt
+import seaborn
+
+for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'stds', 'Xs', 'Ys', 'Zs', 'eu[0]', 'eu[1]', 'eu[2]', '-log probs'],
+                      [c11s, anisotropics, c44s, stds, Xs, Ys, Zs, as_, bs_, ys_, logps]):
+    seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
+    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
+    plt.tick_params(axis='x', which='major', labelsize=16)
+    plt.show()
+    #seaborn.distplot(d[-650:], kde = False, fit = scipy.stats.norm)
+    #plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
+    #plt.show()
+
+#plt.plot(as_, ys_)
+#plt.ylabel('eu[2]s')
+#plt.xlabel('eu[0]s')
+#plt.show()
+#%%
+rs = []
+for a, b, y in zip(as_, bs_, ys_):
+    s = numpy.sin((a, b, y))
+    c = numpy.cos((a, b, y))
+
+    Q = numpy.zeros((3, 3))
+
+    Q = numpy.array([[c[0] * c[2] - s[0] * c[1] * s[2], s[0] * c[2] + c[0] * c[1] * s[2], s[1] * s[2]],
+                     [-c[0] * s[2] - s[0] * c[1] * c[2], -s[0] * s[2] + c[0] * c[1] * c[2], s[1] * c[2]],
+                     [s[0] * s[1], -c[0] * s[1], c[1]]])
+
+    tmp = Q.T.dot([1.0, 0.0, 0.0])
+
+    rs.append(tmp)
+
+rs = numpy.array(rs)
+
+plt.plot(rs[:, 0], 'r')
+plt.plot(rs[:, 1], 'g')
+plt.plot(rs[:, 2], 'b')
+plt.legend(['x-component', 'y-component', 'z-component'])
+plt.show()
 #%%
 c11, anisotropic, c44, _, X, Y, Z, a, b, y = qs[accepts[-1]]
 c12 = -(c44 * 2.0 / anisotropic - c11)
