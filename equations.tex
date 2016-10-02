@@ -1,0 +1,27 @@
+c_{11}, c_{12}, ... = f^{-1}(\mu_1...\mu_N)
+
+p \( x_1...x_N\ | c_{11}, c_{12}, ...) = \prod_{i = 1...N} \frac{e^{\frac{(x_i - \mu_i)^2}{2 \sigma^2}}}{\sqrt{2 \pi \sigma}}
+
+-log\(p\) = \sum_{i=1...N}  \frac{1}{2} \left(-\frac{(\mu_i-x_i)^2}{\sigma^2}-2 \log (\sigma)-\log
+   (\pi )-\log (2)\right)
+
+-\frac{\partial log\left (p \right )}{\partial c_{11}} = \frac{-\partial log\left (p \right )}{\partial \mu_{i}} \frac{\partial \mu_i}{\partial c_{11}}
+
+p(x_i|\mu_i, \sigma_i) = Normal(\mu_i, \sigma_i) = \frac{e^{\frac{(x_i - \mu_i)^2}{2 \sigma^2}}}{\sqrt{2 \pi \sigma}}
+
+K\nu_i = \omega_i^2M\nu_i
+
+M_{i\lambda,k\lambda'} = \rho \delta_{ik} \int_V \phi_{\lambda} \phi_{\lambda'} dV
+
+K_{i\lambda,k\lambda'} = \sum_{j, i = 1}^3 C_{ijkl} \int_V \epsilon_{ij} \left ( \phi_{\lambda} \right ) \epsilon_{kl} \left(\phi_{\lambda'} \right ) dV
+
+\frac{\partial K_{i\lambda,k\lambda'}}{\partial c_{11}} = \sum_{j, i = 1}^3 \frac{\partial C_{ijkl}}{\partial c_{11}} \int_V \epsilon_{ij} \left ( \phi_{\lambda} \right ) \epsilon_{kl} \left(\phi_{\lambda'} \right ) dV
+
+\frac{-\partial log\left (p \right )}{\partial \sigma} = \sum_{i=1...N} \frac{(\mu_i-x_i)^2-\sigma^2}{\sigma^3}
+
+\phi_{\lambda}\left(x, y, z \right ) = x^ny^mz^l, \forall \lambda \\
+\ \left \{ \lambda : (n, m, l), n + m + l \leqslant N \right \}
+
+p\left(\theta|x\right) = \frac{p\left(x|\theta \right )p\left(\theta \right )}{p\left(x \right )} = \frac{p\left(x|\theta \right )p\left(\theta \right )}{\int p\left(x|\theta \right )p\left(\theta \right )d\theta}
+
+
