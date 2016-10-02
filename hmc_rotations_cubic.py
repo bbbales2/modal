@@ -24,9 +24,9 @@ X = 0.011959#0.007753#
 Y = 0.013953#0.009057#
 Z = 0.019976#0.013199#
 
-c11 = 2.0
-anisotropic = 1.0
-c44 = 1.0
+c11 = 2.51
+anisotropic = 2.68
+c44 = 1.31
 c12 = -(c44 * 2.0 / anisotropic - c11)
 
 # Standard deviation around each mode prediction
@@ -105,7 +105,7 @@ current_q = numpy.array([c11, anisotropic, c44, std, X, Y, Z, a, b, y])
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
 L = 50
-epsilon = 0.0001
+epsilon = 0.001
 
 # Set this to true to debug the L and eps values
 debug = False#True#
