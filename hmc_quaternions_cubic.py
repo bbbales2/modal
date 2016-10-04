@@ -112,6 +112,7 @@ epsilon = 0.001
 debug = False#True#
 
 #%%
+# This is for running the HMC
 def UgradU(q):
     c11, anisotropic, c44, std, w, x, y, z = q
     c12 = -(c44 * 2.0 / anisotropic - c11)
@@ -284,35 +285,34 @@ while True:
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
     print "Epsilon: ", epsilon
 #%%
+# This is for plotting the trajectory of the samples through space
 c11s, anisotropics, c44s, stds, ws, xs, ys, zs  = [numpy.array(a) for a in zip(*qs)]#
 import matplotlib.pyplot as plt
 
 for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'ws', 'xs', 'ys', 'zs'],
                       [c11s, anisotropics, c44s, stds, ws, xs, ys, zs]):
     plt.plot(data1)
-    plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1[:200]), numpy.std(data1[:200])))
+    plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1[:3000]), numpy.std(data1[:3000])))
     plt.show()
 
 #%%
+# This is for plotting distributions of the parameters
 import seaborn
 
-c11s, anisotropics, c44s, stds, ws, xs, ys, zs  = [numpy.array(a)[-200:] for a in zip(*qs)]#
+c11s, anisotropics, c44s, stds, ws, xs, ys, zs  = [numpy.array(a) for a in zip(*qs)]#
 import matplotlib.pyplot as plt
 
 for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'ws', 'xs', 'ys', 'zs'],
                       [c11s, anisotropics, c44s, stds, ws, xs, ys, zs]):
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
-    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
+    plt.title('{0}, $\mu$ = {1:0.4f}, $\sigma$ = {2:0.4f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)
     plt.show()
 
-
 #%%
+# This is for seeing the passive rotation applied to a reference x-axis (to see what things converged too)
 Ws = []
 for w, x, y, z in zip(ws, xs, ys, zs):
-    if numpy.abs(numpy.linalg.norm([w, x, y, z]) - 1.0) > 1e-10:
-        print numpy.linalg.norm([w, x, y, z]) - 1.0
-        1/0
     Q = numpy.array([[w**2 - (y**2 + z**2) + x**2, 2.0 * (x * y - w * z), 2.0 * (x * z + w * y)],
                      [2.0 * (y * x + w * z), w**2 - (x**2 + z**2) + y**2, 2.0 * (y * z - w * x)],
                      [2.0 * (z * x - w * y), 2.0 * (z * y + w * x), w**2 - (x**2 + y**2) + z**2]])
@@ -323,6 +323,23 @@ plt.plot(Ws)
 plt.legend(['x-components', 'y-components', 'z-components'])
 plt.show()
 #%%
+#
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+# DON'T GO BELOW HERE
+#
+
 reload(polybasisqu)
 
 dp1, pv1, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasisqu.build(N, X, Y, Z)

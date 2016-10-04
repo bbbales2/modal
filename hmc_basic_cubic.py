@@ -226,7 +226,7 @@ def UgradU(q):
     return -logp, -numpy.array([dlpdc11 + dlpdc12, dlpdc12tf, dlpdc44 + dlpdc12 * -2 / anisotropic, dlpdstd])
 
 while True:
-    q = current_q
+    q = current_q.copy()
     p = numpy.random.randn(len(q)) # independent standard normal variates
 
     current_p = p
@@ -267,7 +267,6 @@ while True:
     # the position at the end of the trajectory or the initial position
     dQ = current_U - proposed_U + current_K - proposed_K
 
-    qs.append(q)
     logps.append(UC)
 
     if numpy.random.rand() < min(1.0, numpy.exp(dQ)):
@@ -279,6 +278,7 @@ while True:
     else:
         print "Rejected: ", current_q
 
+    qs.append(q.copy())
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
 #%%
 c11s, anisotropics, c44s, stds = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]#
