@@ -91,7 +91,7 @@ current_q = numpy.array([c11, anisotropic, c44, std])
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
 L = 50
-epsilon = 0.0005
+epsilon = 0.00015
 
 # Set this to true to debug the L and eps values
 debug = False
@@ -175,7 +175,7 @@ def UgradU(q):
     return -logp, -numpy.array([dlpdc11 + dlpdc12, dlpdc12tf, dlpdc44 + dlpdc12 * -2 / anisotropic, dlpdstd])
 
 while True:
-    q = current_q
+    q = current_q.copy()
     p = numpy.random.randn(len(q)) # independent standard normal variates
 
     current_p = p
@@ -216,7 +216,6 @@ while True:
     # the position at the end of the trajectory or the initial position
     dQ = current_U - proposed_U + current_K - proposed_K
 
-    qs.append(q)
     logps.append(UC)
 
     if numpy.random.rand() < min(1.0, numpy.exp(dQ)):
@@ -228,6 +227,7 @@ while True:
     else:
         print "Rejected: ", current_q
 
+    qs.append(q.copy())
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
 
 
@@ -237,10 +237,29 @@ while True:
 c11s, anisotropics, c44s, stds = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]#
 import matplotlib.pyplot as plt
 
-for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds'],
-                      [c11s, anisotropics, c44s, stds]):
+for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation', '-logp'],
+                      [c11s, anisotropics, c44s, stds, logps[2000:]]):
     plt.plot(data1)
-    plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
+    plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
+    plt.tick_params(axis='y', which='major', labelsize=16)
+    plt.show()
+    #seaborn.distplot(d[-650:], kde = False, fit = scipy.stats.norm)
+    #plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
+    #plt.show()
+
+#plt.plot(as_, ys_)
+#plt.ylabel('eu[2]s')
+#plt.xlabel('eu[0]s')
+#plt.show()
+#%%
+c11s, anisotropics, c44s, stds = [numpy.array(a)[2000:] for a in zip(*[qs[i] for i in accepts])]#
+import seaborn
+
+for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation'],
+                      [c11s, anisotropics, c44s, stds]):
+    seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
+    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
+    plt.tick_params(axis='x', which='major', labelsize=16)
     plt.show()
     #seaborn.distplot(d[-650:], kde = False, fit = scipy.stats.norm)
     #plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
