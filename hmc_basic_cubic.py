@@ -3,7 +3,7 @@ import numpy
 import time
 import scipy
 import os
-os.chdir('/home/bbales2/modal')
+os.chdir('/home/pollock/modal')
 import pyximport
 pyximport.install(reload_support = True)
 
@@ -38,60 +38,6 @@ b = 0.0
 y = 0.0
 
 # These are the sampled modes in khz
-freqs = numpy.array([71.25925,
-75.75875,
-86.478,
-89.947375,
-111.150125,
-112.164125,
-120.172125,
-127.810375,
-128.6755,
-130.739875,
-141.70025,
-144.50375,
-149.40075,
-154.35075,
-156.782125,
-157.554625,
-161.0875,
-165.10325,
-169.7615,
-173.44925,
-174.11675,
-174.90625,
-181.11975,
-182.4585,
-183.98625,
-192.68125,
-193.43575,
-198.793625,
-201.901625,
-205.01475,
-206.619,
-208.513875,
-208.83525,
-212.22525,
-212.464125,
-221.169625,
-225.01225,
-227.74775,
-228.31175,
-231.4265,
-235.792875,
-235.992375,
-236.73675,
-238.157625,
-246.431125,
-246.797125,
-248.3185,
-251.69425,
-252.97225,
-253.9795,
-256.869875,
-258.23825,
-259.39025])
-
 freqs = numpy.array([109.076,
 136.503,
 144.899,
@@ -148,9 +94,12 @@ L = 50
 epsilon = 0.0005
 
 # Set this to true to debug the L and eps values
-debug = False#True
+debug = False
 
 #%%
+
+#This block runs the HMC
+
 dp, pv, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasis.build(N, X, Y, Z)
 
 dCdc11 = numpy.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -238,7 +187,7 @@ while True:
     for i in range(L):
         # Make a full step for the position
         q = q + epsilon * p
-
+        
         #q[-3:] = inv_rotations.qu2eu(symmetry.Symmetry.Cubic.fzQuat(quaternion.Quaternion(inv_rotations.eu2qu(q[-3:]))))
         # Make a full step for the momentum, except at end of trajectory
         if i != L - 1:
@@ -247,7 +196,7 @@ while True:
 
         if debug:
             print "New q: ", q
-            print "H (constant or decreasing): ", U + sum(p ** 2) / 2
+            print "H (constant or decreasing): ", U + sum(p ** 2) / 2, U, sum(p **2) / 2.0
             print ""
 
     U, gradU = UgradU(q)
@@ -262,7 +211,7 @@ while True:
     current_K = sum(current_p ** 2) / 2
     proposed_U = U
     proposed_K = sum(p ** 2) / 2
-
+    
     # Accept or reject the state at end of trajectory, returning either
     # the position at the end of the trajectory or the initial position
     dQ = current_U - proposed_U + current_K - proposed_K
@@ -280,7 +229,11 @@ while True:
         print "Rejected: ", current_q
 
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
+
+
 #%%
+# This block does the plotting
+
 c11s, anisotropics, c44s, stds = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]#
 import matplotlib.pyplot as plt
 
@@ -293,11 +246,18 @@ for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds'],
     #plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
     #plt.show()
 
-#plt.plot(as_, ys_)
-#plt.ylabel('eu[2]s')
-#plt.xlabel('eu[0]s')
-#plt.show()
 #%%
+
+while 1:
+    U, gradU = UgradU(current_q)
+    
+    current_q += 0.0001 * gradU
+#%%
+# Forward problem
+
+# This snippet is helpful to test the last accepted sample
+#c11, anisotropic, c44, std = qs[accepts[-1]]
+
 c12 = -(c44 * 2.0 / anisotropic - c11)
 
 dp, pv, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasis.build(N, X, Y, Z)
