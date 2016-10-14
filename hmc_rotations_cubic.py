@@ -10,9 +10,12 @@ pyximport.install(reload_support = True)
 import polybasis
 reload(polybasis)
 
-#from rotations import symmetry
-#from rotations import quaternion
-#from rotations import inv_rotations
+from rotations import symmetry
+from rotations import quaternion
+from rotations import inv_rotations
+#%%
+
+#%%
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
 N = 10
