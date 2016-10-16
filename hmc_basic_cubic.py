@@ -138,6 +138,8 @@ logps = []
 accepts = []
 
 current_q = numpy.array([c11, anisotropic, c44, std])
+
+accepts.append(current_q)
 #%%
 
 # These are the two HMC parameters
@@ -145,7 +147,7 @@ current_q = numpy.array([c11, anisotropic, c44, std])
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
 L = 50
-epsilon = 0.00015
+epsilon = 0.0001
 
 # Set this to true to debug the L and eps values
 debug = False#True
