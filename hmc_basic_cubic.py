@@ -131,6 +131,8 @@ logps = []
 accepts = []
 
 current_q = numpy.array([c11, anisotropic, c44, std])
+
+accepts.append(current_q)
 #%%
 
 # These are the two HMC parameters
