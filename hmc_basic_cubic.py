@@ -17,13 +17,26 @@ reload(polybasis)
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
 N = 8
 
-density = 4401.695921#8700.0e-3#
 
-# Dimensions -- watch the scaling
-X = 0.007753#0.011959e1#
-Y = 0.009057#0.013953e1#
-Z = 0.013199#0.019976e1#
+# Dimensions for sample 2M-A (units of meters)
+X = 0.00550
+Y = 0.01079
+Z = 0.01302
 
+## Dimensions for TF-2
+#X = 0.007753#0.011959e1#
+#Y = 0.009057#0.013953e1#
+#Z = 0.013199#0.019976e1#
+
+#sample mass
+mass = 6.2203e-3 #mass in kg
+
+
+#Sample density
+#density = 4401.695921 #Ti-64-TF2
+#density = 8700.0 #CMSX-4
+density = (mass / (X*Y*Z))
+ 
 c11 = 2.0
 anisotropic = 1.0
 c44 = 1.0
@@ -38,44 +51,78 @@ b = 0.0
 y = 0.0
 
 # These are the sampled modes in khz
-freqs = numpy.array([109.076,
-136.503,
-144.899,
-184.926,
-188.476,
-195.562,
-199.246,
-208.460,
-231.220,
-232.630,
-239.057,
-241.684,
-242.159,
-249.891,
-266.285,
-272.672,
-285.217,
-285.670,
-288.796,
-296.976,
-301.101,
-303.024,
-305.115,
-305.827,
-306.939,
-310.428,
-318.000,
-319.457,
-322.249,
-323.464,
-324.702,
-334.687,
-340.427,
-344.087,
-363.798,
-364.862,
-371.704,
-373.248])
+# data for sample 2M-A
+freqs = numpy.array([86.916,
+108.277,
+146.582,
+155.722,
+166.274,
+167.510,
+173.016,
+181.229,
+195.209,
+204.479,
+218.063,
+225.679,
+240.271,
+251.107,
+254.079,
+258.857,
+264.639,
+281.978,
+286.834,
+287.739,
+311.693,
+318.010,
+327.643,
+328.771,
+336.807,
+338.585,
+342.069,
+344.734,
+346.879,
+350.192
+])
+
+# Ti-64-TF2 Test Data
+#freqs = numpy.array([109.076,
+#136.503,
+#144.899,
+#184.926,
+#188.476,
+#195.562,
+#199.246,
+#208.460,
+#231.220,
+#232.630,
+#239.057,
+#241.684,
+#242.159,
+#249.891,
+#266.285,
+#272.672,
+#285.217,
+#285.670,
+#288.796,
+#296.976,
+#301.101,
+#303.024,
+#305.115,
+#305.827,
+#306.939,
+#310.428,
+#318.000,
+#319.457,
+#322.249,
+#323.464,
+#324.702,
+#334.687,
+#340.427,
+#344.087,
+#363.798,
+#364.862,
+#371.704,
+#373.248])
 
 data = (freqs * numpy.pi * 2000) ** 2 / 1e11
 
@@ -91,7 +138,9 @@ current_q = numpy.array([c11, anisotropic, c44, std])
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
 L = 50
-epsilon = 0.00015
+# start epsilon at .0001 and try larger values like .0005 after running for a while
+# epsilon is timestep, we want to make as large as possibe, wihtout getting too many rejects
+epsilon = 0.002
 
 # Set this to true to debug the L and eps values
 debug = False
@@ -232,13 +281,24 @@ while True:
 
 
 #%%
+# Save samples (qs)
+# First argument is filename
+    
+import os
+import tempfile
+import datetime
+
+_, filename = tempfile.mkstemp(prefix = "data_{0}_".format(datetime.datetime.now().strftime("%Y-%m-%d")), suffix = ".txt", dir = os.getcwd())
+numpy.savetxt(filename, qs, header = 'c11 anisotropic c44 std')
+#%%
 # This block does the plotting
 
-c11s, anisotropics, c44s, stds = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]#
+c11s, anisotropics, c44s, stds = [numpy.array(a) for a in zip(*qs)]#
 import matplotlib.pyplot as plt
+import seaborn
 
 for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation', '-logp'],
-                      [c11s, anisotropics, c44s, stds, logps[2000:]]):
+                      [c11s, anisotropics, c44s, stds, logps]):
     plt.plot(data1)
     plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
     plt.tick_params(axis='y', which='major', labelsize=16)
@@ -252,10 +312,9 @@ for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation', '-lo
 #plt.xlabel('eu[0]s')
 #plt.show()
 #%%
-c11s, anisotropics, c44s, stds = [numpy.array(a)[2000:] for a in zip(*[qs[i] for i in accepts])]#
-import seaborn
+c11s, anisotropics, c44s, stds = [numpy.array(a)[-1500:] for a in zip(*qs)]#
 
-for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation'],
+for name, data1 in zip(['C11', 'A Ratio', 'C44', 'std dev'],
                       [c11s, anisotropics, c44s, stds]):
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
@@ -275,7 +334,7 @@ while 1:
 # Forward problem
 
 # This snippet is helpful to test the last accepted sample
-#c11, anisotropic, c44, std = qs[accepts[-1]]
+c11, anisotropic, c44, std = qs[accepts[-1]]
 
 c12 = -(c44 * 2.0 / anisotropic - c11)
 
@@ -291,5 +350,6 @@ C = numpy.array([[c11, c12, c12, 0, 0, 0],
 K, M = polybasis.buildKM(C, dp, pv, density)
 eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(data) - 1))
 
+print "computed, accepted"
 for e1, dat in zip(eigs, data):
     print "{0:0.3f} {1:0.3f}".format(e1, dat)

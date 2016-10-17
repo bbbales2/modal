@@ -2,10 +2,10 @@
 import os
 import numpy
 
-os.chdir('/home/bbales2/modal')
+os.chdir('/home/pollock/modal')
 
-from rotations import symmetry
-from rotations import quaternion
+import symmetry
+import quaternion
 
 import itertools
 # get the equivalent passive rotation in the fundamental zone (active post multiplies symmetry operator)
@@ -25,3 +25,15 @@ d = max(max(equivMiso), max([q.conjugate() for q in equivMiso])) # select quater
 print "Quaternion rotation between q1 & q2", d
 print "Difference in angle: {0} degrees".format(2 * numpy.arccos(d.wxyz[0]) * 180 / numpy.pi)
 
+cubicSym = symmetry.Symmetry.Cubic.quOperators()
+orthoSym = symmetry.Symmetry.Orthorhombic.quOperators()
+miso = deltaQ
+for i in range(len(cubicSym)):
+    qa = cubicSym[i] * q1
+    for j in range(len(orthoSym)):
+        qas = qa * orthoSym[j]
+        for k in range(len(cubicSym)):
+            qasb = qas * cubicSym[k]
+            miso = max([miso, qasb, qasb.conjugate()])
+print(miso)
+print "Difference in angle: {0} degrees".format(2 * numpy.arccos(miso.wxyz[0]) * 180 / numpy.pi)

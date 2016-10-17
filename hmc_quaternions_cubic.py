@@ -3,8 +3,9 @@ import numpy
 import time
 import scipy
 import os
-os.chdir('/home/bbales2/modal')
+os.chdir('/home/pollock/modal')
 import pyximport
+import seaborn
 pyximport.install(reload_support = True)
 
 import polybasisqu
@@ -17,12 +18,12 @@ reload(polybasisqu)
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
 N = 10
 
-density = 8700.0#4401.695921#
+density = 8700.0  #4401.695921#
 
 # Dimensions -- watch the scaling
-X = 0.011959#0.007753#
-Y = 0.013953#0.009057#
-Z = 0.019976#0.013199#
+X = 0.011 #0.011959  #0.007753#
+Y = 0.013 #0.013953  #0.009057#
+Z = 0.019 #0.019976  #0.013199#
 
 c11 = 2.0
 anisotropic = 2.0
@@ -39,59 +40,96 @@ y = 0.0
 z = 0.0
 
 # These are the sampled modes in khz
-freqs = numpy.array([71.25925,
-75.75875,
-86.478,
-89.947375,
-111.150125,
-112.164125,
-120.172125,
-127.810375,
-128.6755,
-130.739875,
-141.70025,
-144.50375,
-149.40075,
-154.35075,
-156.782125,
-157.554625,
-161.0875,
-165.10325,
-169.7615,
-173.44925,
-174.11675,
-174.90625,
-181.11975,
-182.4585,
-183.98625,
-192.68125,
-193.43575,
-198.793625,
-201.901625,
-205.01475,
-206.619,
-208.513875,
-208.83525,
-212.22525,
-212.464125,
-221.169625,
-225.01225,
-227.74775,
-228.31175,
-231.4265,
-235.792875,
-235.992375,
-236.73675,
-238.157625,
-246.431125,
-246.797125,
-248.3185,
-251.69425,
-252.97225,
-253.9795,
-256.869875,
-258.23825,
-259.39025])
+
+# Frequencies from SXSA
+freqs = numpy.array([
+68.066,
+87.434,
+104.045,
+105.770,
+115.270,
+122.850,
+131.646,
+137.702,
+139.280,
+149.730,
+156.548,
+156.790,
+169.746,
+172.139,
+173.153,
+178.047,
+183.433,
+188.288,
+197.138,
+197.869,
+198.128,
+203.813,
+206.794,
+212.173,
+212.613,
+214.528,
+215.840,
+221.452,
+227.569,
+232.430])
+
+
+
+# Frequencies for CMSX-4
+#freqs = numpy.array([71.25925,
+#75.75875,
+#86.478,
+#89.947375,
+#111.150125,
+#112.164125,
+#120.172125,
+#127.810375,
+#128.6755,
+#130.739875,
+#141.70025,
+#144.50375,
+#149.40075,
+#154.35075,
+#156.782125,
+#157.554625,
+#161.0875,
+#165.10325,
+#169.7615,
+#173.44925,
+#174.11675,
+#174.90625,
+#181.11975,
+#182.4585,
+#183.98625,
+#192.68125,
+#193.43575,
+#198.793625,
+#201.901625,
+#205.01475,
+#206.619,
+#208.513875,
+#208.83525,
+#212.22525,
+#212.464125,
+#221.169625,
+#225.01225,
+#227.74775,
+#228.31175,
+#231.4265,
+#235.792875,
+#235.992375,
+#236.73675,
+#238.157625,
+#246.431125,
+#246.797125,
+#248.3185,
+#251.69425,
+#252.97225,
+#253.9795,
+#256.869875,
+#258.23825,
+#259.39025])
 
 data = (freqs * numpy.pi * 2000) ** 2 / 1e11
 
@@ -106,7 +144,9 @@ current_q = numpy.array([c11, anisotropic, c44, std, w, x, y, z])
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
 L = 50
-epsilon = 0.001
+
+# start epsilon at .0001 and try larger values like .0005 after running for a while
+epsilon = 0.00025
 
 # Set this to true to debug the L and eps values
 debug = False#True#
@@ -276,28 +316,37 @@ while True:
 
         accepts.append(len(qs) - 1)
 
-        print "Accepted ({0} accepts so far): {1}".format(len(accepts), ", ".join(["{0:.2f}".format(x) for x in current_q]))
+        print "Accepted ({0} accepts so far): {1}".format(len(accepts), ", ".join(["{0:.4f}".format(qq) for qq in current_q]))
     else:
-        print "Rejected: ", ", ".join(["{0:.2f}".format(x) for x in current_q])
+        print "Rejected: ", ", ".join(["{0:.4f}".format(qq) for qq in current_q])
 
     qs.append(current_q.copy())
     print "Norm of rotation vector: ", numpy.linalg.norm(q[-4:])
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
     print "Epsilon: ", epsilon
 #%%
+# Save samples (qs)
+# First argument is filename
+    
+import os
+import tempfile
+import datetime
+
+_, filename = tempfile.mkstemp(prefix = "data_{0}_".format(datetime.datetime.now().strftime("%Y-%m-%d")), suffix = ".txt", dir = os.getcwd())
+numpy.savetxt(filename, qs, header = 'c11 anisotropic c44 std w x y z')
+#%%
 # This is for plotting the trajectory of the samples through space
-c11s, anisotropics, c44s, stds, ws, xs, ys, zs  = [numpy.array(a) for a in zip(*qs)]#
+c11s, anisotropics, c44s, stds, ws, xs, ys, zs  = [numpy.array(a)[-8000:] for a in zip(*qs)]#
 import matplotlib.pyplot as plt
 
 for name, data1 in zip(['c11', 'anisotropics', 'c44', 'stds', 'ws', 'xs', 'ys', 'zs'],
                       [c11s, anisotropics, c44s, stds, ws, xs, ys, zs]):
     plt.plot(data1)
-    plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1[:3000]), numpy.std(data1[:3000])))
+    plt.title('{0} u = {1:.3e}, std = {2:.3e}'.format(name, numpy.mean(data1), numpy.std(data1)))
     plt.show()
 
 #%%
 # This is for plotting distributions of the parameters
-import seaborn
 
 c11s, anisotropics, c44s, stds, ws, xs, ys, zs  = [numpy.array(a) for a in zip(*qs)]#
 import matplotlib.pyplot as plt
@@ -322,4 +371,27 @@ for w, x, y, z in zip(ws, xs, ys, zs):
 plt.plot(Ws)
 plt.legend(['x-components', 'y-components', 'z-components'])
 plt.show()
-#%%
+#%%#%%
+# Forward problem
+
+# This snippet is helpful to test the last accepted sample
+c11, anisotropic, c44, std, w, x, y, z = qs[accepts[-1]]
+
+c12 = -(c44 * 2.0 / anisotropic - c11)
+
+dp, pv, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasisqu.build(N, X, Y, Z)
+
+C = numpy.array([[c11, c12, c12, 0, 0, 0],
+                 [c12, c11, c12, 0, 0, 0],
+                 [c12, c12, c11, 0, 0, 0],
+                 [0, 0, 0, c44, 0, 0],
+                 [0, 0, 0, 0, c44, 0],
+                 [0, 0, 0, 0, 0, c44]])
+
+C, dCdw, dCdx, dCdy, dCdz, K = polybasisqu.buildRot(C, w, x, y, z)
+K, M = polybasisqu.buildKM(C, dp, pv, density)
+eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(data) - 1))
+
+print "computed, accepted"
+for e1, dat in zip(eigs, data):
+    print "{0:0.3f} {1:0.3f}".format(e1, dat)
