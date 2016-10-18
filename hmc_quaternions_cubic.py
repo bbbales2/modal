@@ -285,6 +285,8 @@ while True:
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
     print "Epsilon: ", epsilon
 #%%
+numpy.savetxt("/home/bbales2/modal/paper/cmsx4/qs.csv", qs, delimiter = ",", comments = "", header = "c11, anisotropic, c44, std, ws, xs, ys, zs")
+#%%
 # This is for plotting the trajectory of the samples through space
 c11s, anisotropics, c44s, stds, ws, xs, ys, zs  = [numpy.array(a) for a in zip(*qs)]#
 import matplotlib.pyplot as plt
@@ -323,3 +325,4 @@ plt.plot(Ws)
 plt.legend(['x-components', 'y-components', 'z-components'])
 plt.show()
 #%%
+

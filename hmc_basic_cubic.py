@@ -147,7 +147,7 @@ accepts.append(current_q)
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
 L = 50
-epsilon = 0.0001
+epsilon = 0.0005
 
 # Set this to true to debug the L and eps values
 debug = False#True
@@ -283,7 +283,7 @@ while True:
     qs.append(q.copy())
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
 #%%
-c11s, anisotropics, c44s, stds = [numpy.array(a) for a in zip(*[qs[i] for i in accepts])]#
+c11s, anisotropics, c44s, stds = [numpy.array(a)[-1000:] for a in zip(*qs)]#
 import matplotlib.pyplot as plt
 
 for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation', '-logp'],
@@ -301,7 +301,9 @@ for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation', '-lo
 #plt.xlabel('eu[0]s')
 #plt.show()
 #%%
-c11s, anisotropics, c44s, stds = [numpy.array(a)[2000:] for a in zip(*[qs[i] for i in accepts])]#
+numpy.savetxt("/home/bbales2/modal/paper/ti/qs.csv", qs, delimiter = ",", comments = "", header = "c11, anisotropic, c44, std")
+#%%
+c11s, anisotropics, c44s, stds = [numpy.array(a)[2000:] for a in zip(*qs)]#
 import seaborn
 
 for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation'],
