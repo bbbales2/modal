@@ -21,9 +21,9 @@ N = 10
 density = 8700.0  #4401.695921#
 
 # Dimensions -- watch the scaling
-X = 0.011 #0.011959  #0.007753#
-Y = 0.013 #0.013953  #0.009057#
-Z = 0.019 #0.019976  #0.013199#
+X = .011959  #0.007753#
+Y = .013953  #0.009057#
+Z = .019976  #0.013199#
 
 c11 = 2.0
 anisotropic = 2.0
@@ -77,59 +77,59 @@ freqs = numpy.array([
 
 
 # Frequencies for CMSX-4
-#freqs = numpy.array([71.25925,
-#75.75875,
-#86.478,
-#89.947375,
-#111.150125,
-#112.164125,
-#120.172125,
-#127.810375,
-#128.6755,
-#130.739875,
-#141.70025,
-#144.50375,
-#149.40075,
-#154.35075,
-#156.782125,
-#157.554625,
-#161.0875,
-#165.10325,
-#169.7615,
-#173.44925,
-#174.11675,
-#174.90625,
-#181.11975,
-#182.4585,
-#183.98625,
-#192.68125,
-#193.43575,
-#198.793625,
-#201.901625,
-#205.01475,
-#206.619,
-#208.513875,
-#208.83525,
-#212.22525,
-#212.464125,
-#221.169625,
-#225.01225,
-#227.74775,
-#228.31175,
-#231.4265,
-#235.792875,
-#235.992375,
-#236.73675,
-#238.157625,
-#246.431125,
-#246.797125,
-#248.3185,
-#251.69425,
-#252.97225,
-#253.9795,
-#256.869875,
-#258.23825,
-#259.39025])
+freqs = numpy.array([71.25925,
+75.75875,
+86.478,
+89.947375,
+111.150125,
+112.164125,
+120.172125,
+127.810375,
+128.6755,
+130.739875,
+141.70025,
+144.50375,
+149.40075,
+154.35075,
+156.782125,
+157.554625,
+161.0875,
+165.10325,
+169.7615,
+173.44925,
+174.11675,
+174.90625,
+181.11975,
+182.4585,
+183.98625,
+192.68125,
+193.43575,
+198.793625,
+201.901625,
+205.01475,
+206.619,
+208.513875,
+208.83525,
+212.22525,
+212.464125,
+221.169625,
+225.01225,
+227.74775,
+228.31175,
+231.4265,
+235.792875,
+235.992375,
+236.73675,
+238.157625,
+246.431125,
+246.797125,
+248.3185,
+251.69425,
+252.97225,
+253.9795,
+256.869875,
+258.23825,
+259.39025])
 
 data = (freqs * numpy.pi * 2000) ** 2 / 1e11
 
@@ -138,6 +138,8 @@ logps = []
 accepts = []
 
 current_q = numpy.array([c11, anisotropic, c44, std, w, x, y, z])
+current_q = [.243914164e+00, 2.87679060e+00, .131354678e+00, 6.10899449e-02, 9.88260173e-01, 3.40517820e-05, -1.15781363e-02, -1.52190782e-01]
+
 #%%
 # These are the two HMC parameters
 #   L is the number of timesteps to take -- use this if samples in the traceplots don't look random
@@ -325,11 +327,36 @@ while True:
     print "Energy change ({0} samples, {1} accepts): ".format(len(qs), len(accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
     print "Epsilon: ", epsilon
 #%%
+
+import matplotlib.pyplot as plt
+
+for N in [8, 10, 12]:
+    current_q = [.243914164e+00, 2.87679060e+00, .131354678e+00, 6.10899449e-02, 9.88260173e-01, 3.40517820e-05, -1.15781363e-02, -1.52190782e-01]
+
+    xs = numpy.linspace(2.5 * -1.15781363e-02, 2.5 * 1.20451685e-02, 20)
+    Us = []
+    for i in range(len(xs)):
+        current_q[6] = xs[i]
+
+        current_q[4] = numpy.sqrt(1.0 - current_q[5]**2 - current_q[6]**2 - current_q[7]**2)
+
+        U, gradU = UgradU(current_q)
+
+        Us.append(U)
+        print "{0}/{1}".format(i, len(xs))
+
+    plt.plot(xs, Us)
+    plt.title("N = {0}".format(N))
+    plt.xlabel('y')
+    plt.ylabel('-logp')
+    plt.show()
+
+#%%
 numpy.savetxt("/home/bbales2/modal/paper/cmsx4/qs.csv", qs, delimiter = ",", comments = "", header = "c11, anisotropic, c44, std, ws, xs, ys, zs")
 #%%
 # Save samples (qs)
 # First argument is filename
-    
+
 import os
 import tempfile
 import datetime
@@ -377,7 +404,13 @@ plt.show()
 # Forward problem
 
 # This snippet is helpful to test the last accepted sample
-c11, anisotropic, c44, std, w, x, y, z = qs[accepts[-1]]
+#c11, anisotropic, c44, std, w, x, y, z = qs[accepts[-1]]
+#current_q = [  2.43914164e+00,   2.87679060e+00,   1.31354678e+00,   6.10899449e-02, 9.88260173e-01,   3.40517820e-05,  -1.15781363e-02,  -1.52190782e-01]
+#current_q = [  2.44439470e+00,   2.87642565e+00,   1.31315193e+00,   6.09557485e-02, 9.88248568e-01,  -4.77945975e-04,   0.0,  -1.52234546e-01]
+current_q = [  2.43914164e+00,   2.87679060e+00,   1.31354678e+00,   6.10899449e-02, 9.88260173e-01,   3.40517820e-05,  0.0,  -1.52190782e-01]
+current_q[4] = numpy.sqrt(1.0 - current_q[5]**2 - current_q[6]**2 - current_q[7]**2)
+
+c11, anisotropic, c44, std, w, x, y, z = current_q
 
 c12 = -(c44 * 2.0 / anisotropic - c11)
 
@@ -392,8 +425,13 @@ C = numpy.array([[c11, c12, c12, 0, 0, 0],
 
 C, dCdw, dCdx, dCdy, dCdz, K = polybasisqu.buildRot(C, w, x, y, z)
 K, M = polybasisqu.buildKM(C, dp, pv, density)
-eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(data) - 1))
+eigs2, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(data) - 1))
 
 print "computed, accepted"
-for e1, dat in zip(eigs, data):
-    print "{0:0.3f} {1:0.3f}".format(e1, dat)
+for e1, dat in zip(eigs2, data):
+    print "{0:0.5f} {1:0.3f}".format(e1, dat)
+#%%
+
+print "minimum (y = -0.015), y = 0.0, measured, error vs. y = -0.015, error vs. y = 0.0"
+for e1, e2, dat in zip(eigs, eigs2, data):
+    print "{0:0.3f} {1:0.3f} {2:0.3f} {3:0.3f} {4:0.3f}".format(e1, e2, dat, numpy.abs(e1 - dat), numpy.abs(e2 - dat))
