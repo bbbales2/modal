@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 os.chdir("/home/bbales2/modal")
 
-qs = numpy.loadtxt("/home/bbales2/modal/paper/cmsx4/qs.csv", delimiter = ",", skiprows = 1)
+qs = numpy.loadtxt("/home/bbales2/modal/paper/cmsx4/qs2.csv", delimiter = ",", skiprows = 1)
 
 #%%
 
@@ -68,7 +68,7 @@ def get_misorientations(g1, g2, n):
 
         print t / float(n)
 
-        print miso[0]
+        #print miso[0]
 
         angle = 2 * numpy.arccos(miso.wxyz[0]) * 180 / numpy.pi
 
@@ -79,11 +79,11 @@ def get_misorientations(g1, g2, n):
     # to move q2 back to q1, use all the i, j, k rotations.... Not just miso
     return angles
 
-angles11 = get_misorientations(g1, g1, 50)
+angles11 = get_misorientations(g1, g1, 250)
 print '----'
-angles12 = get_misorientations(g1, g2, 50)
+angles12 = get_misorientations(g1, g2, 250)
 print '----'
-angles22 = get_misorientations(g2, g2, 50)
+angles22 = get_misorientations(g2, g2, 250)
 #%%
 symmetry.Symmetry.Orthorhombic.quInFZ(quaternion.Quaternion(g1[0]))
 #%%
