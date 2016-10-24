@@ -13,6 +13,7 @@ reload(polybasisqu)
 
 import contextlib
 
+# Stolen from http://stackoverflow.com/a/2891805/3769360
 @contextlib.contextmanager
 def printoptions(*args, **kwargs):
     original = numpy.get_printoptions()
