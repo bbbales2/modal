@@ -21,7 +21,7 @@ N = 8
 # Dimensions for sample 2M-A (units of meters)
 X = 0.00550
 Y = 0.01079
-Z = 0.01302
+Z = 0.013025
 
 ## Dimensions for TF-2
 #X = 0.007753#0.011959e1#
@@ -29,7 +29,8 @@ Z = 0.01302
 #Z = 0.013199#0.019976e1#
 
 #sample mass
-mass = 6.2203e-3 #mass in kg
+mass = 6.2593e-3 #mass in kg
+
 
 
 #Sample density
@@ -37,9 +38,9 @@ mass = 6.2203e-3 #mass in kg
 #density = 8700.0 #CMSX-4
 density = (mass / (X*Y*Z))
  
-c11 = 2.0
-anisotropic = 1.0
-c44 = 1.0
+c11 = 2.7
+anisotropic = 1.1
+c44 = 0.8
 c12 = -(c44 * 2.0 / anisotropic - c11)
 
 # Standard deviation around each mode prediction
@@ -52,37 +53,133 @@ y = 0.0
 
 # These are the sampled modes in khz
 # data for sample 2M-A
-freqs = numpy.array([86.916,
-108.277,
-146.582,
-155.722,
-166.274,
-167.510,
-173.016,
-181.229,
-195.209,
-204.479,
-218.063,
-225.679,
-240.271,
-251.107,
-254.079,
-258.857,
-264.639,
-281.978,
-286.834,
-287.739,
-311.693,
-318.010,
-327.643,
-328.771,
-336.807,
-338.585,
-342.069,
-344.734,
-346.879,
-350.192
-])
+#freqs = numpy.array([86.916,
+#108.277,
+#146.582,
+#155.722,
+#166.274,
+#167.510,
+#173.016,
+#181.229,
+#195.209,
+#204.479,
+#218.063,
+#225.679,
+#240.271,
+#251.107,
+#254.079,
+#258.857,
+#264.639,
+#281.978,
+#286.834,
+#287.739,
+#311.693,
+#318.010,
+#327.643,
+#328.771,
+#336.807,
+#338.585,
+#342.069,
+#344.734,
+#346.879,
+#350.192
+#])
+
+# data for sample 2M-B
+#freqs = numpy.array([86.2498,
+#109.5542,
+#146.3892,
+#156.1374,
+#165.9964,
+#166.7378,
+#173.4004,
+#181.1272,
+#194.8802,
+#204.6936,
+#218.6092,
+#224.8072,
+#240.3284,
+#249.4384,
+#254.8852,
+#257.6374,
+#262.7806,
+#281.0248,
+#285.0576,
+#286.7056,
+#312.1016,
+#315.6012,
+#325.2092,
+#326.6862,
+#334.4188,
+#337.9002,
+#341.8525,
+#343.7550,
+#346.3570,
+#349.8334])
+
+#data for sample 2M-C
+freqs = numpy.array([86.822,
+109.347,
+146.016,
+155.950,
+166.567,
+167.098,
+172.630,
+181.351,
+194.703,
+204.054,
+220.626,
+225.696,
+239.605,
+248.984,
+253.871,
+258.744,
+263.681,
+281.705,
+285.414,
+287.231,
+312.897,
+316.988,
+327.030,
+329.371,
+336.088,
+338.079,
+342.218,
+344.306,
+345.991,
+346.751])
+
+## Frequencies from 2M-F-Ave (30 modes)
+#freqs = numpy.array([86.039,
+#104.425,
+#123.800,
+#134.288,
+#150.415,
+#161.818,
+#175.740,
+#178.873,
+#184.419,
+#195.570,
+#214.117,
+#218.079,
+#223.200,
+#224.125,
+#240.377,
+#256.072,
+#263.282,
+#271.957,
+#274.752,
+#286.432,
+#291.923,
+#296.012,
+#300.708,
+#308.197,
+#316.962,
+#324.822,
+#328.065,
+#334.092,
+#335.421,
+#340.246])
 
 # Ti-64-TF2 Test Data
 #freqs = numpy.array([109.076,
@@ -295,14 +392,14 @@ numpy.savetxt(filename, qs, header = 'c11 anisotropic c44 std')
 #%%
 # This block does the plotting
 
-c11s, anisotropics, c44s, stds = [numpy.array(a) for a in zip(*qs)]#
+c11s, anisotropics, c44s, stds = [numpy.array(aa)[-2000:] for aa in zip(*qs)]#
 import matplotlib.pyplot as plt
 import seaborn
 
-for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation', '-logp'],
-                      [c11s, anisotropics, c44s, stds, logps]):
+for name, data1 in zip(['c11', 'aniso ratio', 'c44', 'std deviation', '-logp'],
+                      [c11s, anisotropics, c44s, stds, logps[-20000:]]):
     plt.plot(data1)
-    plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
+    plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 30)
     plt.tick_params(axis='y', which='major', labelsize=16)
     plt.show()
     #seaborn.distplot(d[-650:], kde = False, fit = scipy.stats.norm)
@@ -314,12 +411,12 @@ for name, data1 in zip(['c11', 'anisotropic ratio', 'c44', 'std deviation', '-lo
 #plt.xlabel('eu[0]s')
 #plt.show()
 #%%
-c11s, anisotropics, c44s, stds = [numpy.array(a)[-1500:] for a in zip(*qs)]#
+c11s, anisotropics, c44s, stds = [numpy.array(ab)[-2000:] for ab in zip(*qs)]#
 
-for name, data1 in zip(['C11', 'A Ratio', 'C44', 'std dev'],
+for name, data1 in zip(['c11', 'aniso ratio', 'c44', 'std dev'],
                       [c11s, anisotropics, c44s, stds]):
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
-    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
+    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 30)
     plt.tick_params(axis='x', which='major', labelsize=16)
     plt.show()
     #seaborn.distplot(d[-650:], kde = False, fit = scipy.stats.norm)
