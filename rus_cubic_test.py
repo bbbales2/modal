@@ -110,6 +110,8 @@ hmc.set_timestepping(epsilon = epsilon, L = 50)
 
 hmc.sample(debug = True)
 #%%
+hmc.posterior_predictive()
+#%%
 print hmc.saves()
 #%%
 reload(rus)
@@ -175,6 +177,7 @@ for name, data1 in zip(*hmc.format_samples()):
     plt.show()
 
 for name, data1 in zip(*hmc.format_samples()):
+    data1 = data1[-200:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)
