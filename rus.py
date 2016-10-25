@@ -244,6 +244,32 @@ class HMC():
         for freq, dat in zip(freqs, self.data):
             print "{0:0.{2}f}, {1:0.{2}f}".format(freq, dat, precision)
 
+    def posterior_predictive(self, lastN = 200, precision = 5):
+        lastN = min(lastN, len(self.qs))
+
+        posterior_predictive = numpy.zeros((len(self.data), lastN))
+
+        for i, q in enumerate(self.qs[-lastN:]):
+            qdict = self.qdict(self.current_q)
+
+            for p in qdict:
+                qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
+
+            C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
+
+            K, M = polybasis.buildKM(C, self.dp, self.pv, self.density)
+
+            eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(self.data) - 1))
+
+            posterior_predictive[:, i] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+
+        l = numpy.percentile(posterior_predictive, 5, axis = 1)
+        r = numpy.percentile(posterior_predictive, 5, axis = 1)
+
+        print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "5th %", "measured", "95th %")
+        for ll, meas, rr in zip(l, self.data, r):
+            print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
+
     def save(self, filename):
         f = open(filename, 'w')
         f.write(self.saves())
