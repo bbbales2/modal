@@ -12,7 +12,7 @@ reload(rus)
 #%%
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 8
+N = 10
 
 ##
 X = 0.00550
@@ -74,7 +74,7 @@ data = numpy.array([84.824,
 396.2695,
 399.8153333,
 404.451,
-407.6056667])
+407.6056667])[:30]
 
 #%%
 
@@ -107,7 +107,8 @@ hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
               density = density * 1e-3, X = X * 10, Y = Y * 10, Z = Z * 10,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
-              parameters = { c11 : 2.0e-1, c12 : 1.0e-1, c13 : 1.0e-1, c33 : 1.0e-1, c44 : 1.0e-1, 'std' : 5.0 }) # Parameters
+              parameters = { c11 : 2.0e-1, c12 : 1.0e-1, c13 : 1.0e-1, c33 : 1.0e-1, c44 : 1.0e-1, 'std' : 5.0 }, # Parameters
+              constrained_positive = [c11, c12, c13, c33, c44, 'std']) # Constrain these variables to be positive
 
 hmc.set_labels({ c11 : 'c11', c12 : 'c12', c13 : 'c13', c33 : 'c44', c44 : 'c44', 'std' : 'std' })
 
@@ -119,7 +120,7 @@ hmc.derivative_check()
 #%%
 reload(rus)
 
-hmc.set_timestepping(epsilon = epsilon * 5, L = 50)
+hmc.set_timestepping(epsilon = epsilon * 10, L = 50)
 
 hmc.sample(debug = False)
 

@@ -20,7 +20,7 @@ def printoptions(*args, **kwargs):
     numpy.set_printoptions(**original)
 
 class HMC():
-    def __init__(self, N, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters):
+    def __init__(self, N, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None):
         self.C = stiffness_matrix
         self.dC = {}
         self.density = density
@@ -29,10 +29,20 @@ class HMC():
         self.Z = Z
         self.order = {}
         self.initial_conditions = parameters
+        self.labels = {}
+
+        self.constrained_positive = set()
+        if constrained_positive != None:
+            self.constrained_positive = set(constrained_positive)
+
+        self.constrained_positive.add('std')
 
         # Choose an ordering of internal parameters
         for i, p in enumerate(self.initial_conditions):
             self.order[p] = i
+            self.labels[p] = str(i)
+
+        self.labels['std'] = 'std'
 
         self.data = resonance_modes
 
@@ -57,7 +67,7 @@ class HMC():
         self.current_q = numpy.zeros(len(self.order))
 
         for p, i in self.order.items():
-            self.current_q[i] = numpy.log(initial_conditions[p]) if p != 'std' else initial_conditions[p]
+            self.current_q[i] = numpy.log(initial_conditions[p]) if p in self.constrained_positive else initial_conditions[p]
 
         self.accepts.append(self.current_q)
 
@@ -73,7 +83,8 @@ class HMC():
         qdict = self.qdict(q)
 
         for p in qdict:
-            qdict[p] = numpy.exp(qdict[p])
+            if p in self.constrained_positive:
+                qdict[p] = numpy.exp(qdict[p])
 
         std = qdict['std']
 
@@ -94,7 +105,7 @@ class HMC():
         dlpdstd = sum((-std ** 2 + (self.data - freqs) **2) / std ** 3) * qdict['std'] + 1
         logp = sum(0.5 * (-((self.data - freqs) **2 / std**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
 
-        logp_total += logp + sum(q)
+        logp_total += logp + sum([q[self.order[p]] for p in self.constrained_positive])
 
         # Param likelihood p(params | hyper)
         #logp = sum(0.5 * (-((q[self.params] - q[self.mus]) **2 / q[self.stds]**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(q[self.stds])))
@@ -112,7 +123,7 @@ class HMC():
 
             dlpdp = dlpdl.dot(dldp)
 
-            dlogp_total[i] = dlpdp * qdict[p] + 1
+            dlogp_total[i] = (dlpdp * qdict[p] + 1) if p in self.constrained_positive else dlpdp
 
         dlogp_total[self.order['std']] = dlpdstd
 
@@ -206,13 +217,9 @@ class HMC():
 
         for p, name in self.labels.items():
             if p in self.order:
-                out.append("{0} : {1:0.{2}f}".format(name, numpy.exp(q[self.order[p]]) if p != 'std' else q[self.order[p]], precision))
+                out.append("{0} : {1:0.{2}f}".format(name, numpy.exp(q[self.order[p]]) if p in self.constrained_positive else q[self.order[p]], precision))
 
                 printed.add(self.order[p])
-
-        for i in range(len(self.current_q)):
-            if i not in printed:
-                out.append("{0} : {1:0.{2}f}".format(i, numpy.exp(q[i]) if p != 'std' else q[i], precision))
 
         return "{{ {0} }}".format(", ".join(out))
 
@@ -220,8 +227,7 @@ class HMC():
         qdict = self.qdict(self.current_q)
 
         for p in qdict:
-            if p != 'std':
-                qdict[p] = numpy.exp(qdict[p])
+            qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
 
         C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
 
@@ -248,22 +254,23 @@ class HMC():
         samples = []
 
         printOrder = []
+        do_exp = []
 
         for p, name in self.labels.items():
             if p in self.order:
                 header.append(name)
                 printOrder.append(self.order[p])
 
-        for i in range(len(self.current_q)):
-            if i not in printOrder:
-                header.append(str(i))
-                printOrder.append(i)
+                if p in self.constrained_positive:
+                    do_exp.append(True)
+                else:
+                    do_exp.append(False)
 
-        for i in printOrder:
+        for i, do_exp_ in zip(printOrder, do_exp):
             tmp_samples = []
 
             for q in self.qs:
-                tmp_samples.append(q[i])
+                tmp_samples.append(numpy.exp(q[i]) if do_exp_ else q[i])
 
             samples.append(tmp_samples)
 
@@ -277,7 +284,7 @@ class HMC():
         output.append("# {0}".format(", ".join(header)))
 
         for params in zip(*samples):
-            output.append(", ".join([str(numpy.exp(sample)) for sample in params]))
+            output.append(", ".join([str(sample) for sample in params]))
 
         return "\n".join(output)
 

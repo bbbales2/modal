@@ -120,42 +120,62 @@ hmc.sample(debug = False)
 
 ##%%
 # Working on this -- not ready yet
-#reload(rus)
-#
-#print hmc.saves()
-#
-#
-#reload(rus)
-#
-#c11mc12, c11p2c12, c44 = sympy.symbols('c11mc12 c11p2c12 c44')
-#
-#V = sympy.Matrix([[-1, -1, 1, 0, 0, 0],
-#                  [0, 1, 1, 0, 0, 0],
-#                  [1, 0, 1, 0, 0, 0],
-#                  [0, 0, 0, 0, 0, 1],
-#                  [0, 0, 0, 0, 1, 0],
-#                  [0, 0, 0, 1, 0, 0]])
-#
-#Vinv = sympy.Matrix([[-1, -1, 2, 0, 0, 0],
-#                     [-1, 2, -1, 0, 0, 0],
-#                     [1, 1, 1, 0, 0, 0],
-#                     [0, 0, 0, 0, 0, 3],
-#                     [0, 0, 0, 0, 3, 0],
-#                     [0, 0, 0, 3, 0, 0]]) / 3.0
-#
-#C = sympy.Matrix([[c11mc12, 0, 0, 0, 0, 0],
-#                  [0, c11mc12, 0, 0, 0, 0],
-#                  [0, 0, c11p2c12, 0, 0, 0],
-#                  [0, 0, 0, c44, 0, 0],
-#                  [0, 0, 0, 0, c44, 0],
-#                  [0, 0, 0, 0, 0, c44]])
-#
-#C = V * C * Vinv
-#
-#hmc = rus.HMC(N, density, X, Y, Z, data, C, { c11mc12 : 0.0, c11p2c12 : 1.0, c44 : 1.0, 'std' : 5.0 })
-#
-#hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
-#hmc.set_timestepping(epsilon = epsilon, L = 50)
-#
-#hmc.sample(debug = True)
-##%%
+reload(rus)
+
+print hmc.saves()
+
+#%%
+reload(rus)
+
+c11mc12, c11p2c12, c44 = sympy.symbols('c11mc12 c11p2c12 c44')
+
+V = sympy.Matrix([[-1, -1, 1, 0, 0, 0],
+                  [0, 1, 1, 0, 0, 0],
+                  [1, 0, 1, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 1],
+                  [0, 0, 0, 0, 1, 0],
+                  [0, 0, 0, 1, 0, 0]])
+
+Vinv = sympy.Matrix([[-1, -1, 2, 0, 0, 0],
+                     [-1, 2, -1, 0, 0, 0],
+                     [1, 1, 1, 0, 0, 0],
+                     [0, 0, 0, 0, 0, 3],
+                     [0, 0, 0, 0, 3, 0],
+                     [0, 0, 0, 3, 0, 0]]) / 3.0
+
+C = sympy.Matrix([[c11mc12, 0, 0, 0, 0, 0],
+                  [0, c11mc12, 0, 0, 0, 0],
+                  [0, 0, c11p2c12, 0, 0, 0],
+                  [0, 0, 0, c44, 0, 0],
+                  [0, 0, 0, 0, c44, 0],
+                  [0, 0, 0, 0, 0, c44]])
+
+C = V * C * Vinv
+
+hmc = rus.HMC(N, density, X, Y, Z, data, C, { c11mc12 : 1.0, c11p2c12 : 4.0, c44 : 1.0, 'std' : 5.0 }, constrained_positive = [c44, 'std'])
+
+hmc.set_labels({ c11mc12 : 'c11 - c12', c11p2c12 : 'c11 + 2 * c12', c44 : 'c44', 'std' : 'std' })
+hmc.set_timestepping(epsilon = epsilon, L = 50)
+
+hmc.sample(debug = True)
+#%%
+reload(rus)
+
+hmc.set_timestepping(epsilon = epsilon * 20, L = 50)
+
+hmc.sample(debug = False)
+#%%
+import matplotlib.pyplot as plt
+import seaborn
+
+for name, data1 in zip(*hmc.format_samples()):
+    plt.plot(data1)
+    plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
+    plt.tick_params(axis='y', which='major', labelsize=16)
+    plt.show()
+
+for name, data1 in zip(*hmc.format_samples()):
+    seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
+    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
+    plt.tick_params(axis='x', which='major', labelsize=16)
+    plt.show()
