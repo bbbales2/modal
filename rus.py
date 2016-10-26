@@ -28,6 +28,13 @@ class HMC():
         self.Y = Y
         self.Z = Z
         self.order = {}
+
+        if 'a' not in parameters:
+            parameters['a'] = 0.0
+
+        if 'b' not in parameters:
+            parameters['b'] = 0.0
+
         self.initial_conditions = parameters
         self.labels = {}
 
@@ -36,6 +43,8 @@ class HMC():
             self.constrained_positive = set(constrained_positive)
 
         self.constrained_positive.add('std')
+        #self.constrained_positive.add('a')
+        #self.constrained_positive.add('b')
 
         # Choose an ordering of internal parameters
         for i, p in enumerate(self.initial_conditions):
@@ -47,7 +56,7 @@ class HMC():
         self.data = resonance_modes
 
         for p in self.initial_conditions:
-            if p != 'std':
+            if type(p) != str:
                 self.dC[p] = self.C.diff(p)
 
         self.dp, self.pv, _, _, _, _, _, _ = polybasis.build(N, X, Y, Z)
@@ -87,6 +96,8 @@ class HMC():
                 qdict[p] = numpy.exp(qdict[p])
 
         std = qdict['std']
+        a = qdict['a']
+        b = qdict['b']
 
         C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
 
@@ -98,12 +109,35 @@ class HMC():
 
         eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(self.data) - 1))
 
+        logp = 0.0
+        dlogpdfreqs = numpy.zeros(len(self.data))
+        dlogpda = 0.0
+        dlogpdb = 0.0
+        dlogpdstd = 0.0
+
         freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
         dfreqsdl = 0.5e11 / (numpy.sqrt(eigs * 1e11) * numpy.pi * 2000)
 
-        dlpdfreqs = (self.data - freqs) / std ** 2
-        dlpdstd = sum((-std ** 2 + (self.data - freqs) **2) / std ** 3) * qdict['std'] + 1
-        logp = sum(0.5 * (-((self.data - freqs) **2 / std**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
+        for i in range(len(self.data)):
+            d = self.data[i]
+            f = freqs[i]
+            logp += -0.5 * ((b + d - f + a * i ** 2) ** 2 / (std ** 2) - numpy.log(2) - numpy.log(numpy.pi) - 2 * numpy.log(std))
+            dlogpdfreqs[i] = ( b + d - f + a * i ** 2) / (std ** 2)
+            dlogpdstd += (b ** 2 + d ** 2 - 2 * d * f + f ** 2 + 2 * a * d * i ** 2 - 2 * a * f * i ** 2 + a ** 2 * i ** 4 + 2 * b * (d - f + a * i ** 2) + std ** 2) / (std ** 3)
+            dlogpda += -(i ** 2 * (b + d - f + a * i ** 2)) / (std ** 2)
+            dlogpdb += -(b + d - f + a * i ** 2) / (std ** 2)
+            #logp += 0.5 * (((b - numpy.sqrt(numpy.abs(d - f)) + a * i) ** 2) / (std ** 2) - numpy.log(2 * numpy.pi) - 2 * numpy.log(std))
+            #dlogpdfreqs[i] = (b - numpy.sqrt(numpy.abs(d - f)) * numpy.sign(d - f) + a * i) / (2 * numpy.sqrt(numpy.abs(d - f)) * (std ** 2))
+            #print (i * (b - numpy.sqrt(numpy.abs(d - f)) + a * i)) / (std ** 2)
+            #dlogpda += (i * (b - numpy.sqrt(numpy.abs(d - f)) + a * i)) / (std ** 2)
+            #dlogpdb += (b - numpy.sqrt(numpy.abs(d - f)) + a * i) / (std ** 2)
+            #dlogpdstd += -(b ** 2 + 2 * a * b * i + (a ** 2) * (i ** 2) + (std ** 2) - 2 * (b + a * i) * numpy.sqrt(numpy.abs(d - f)) + numpy.abs(d - f)) / (std ** 3)
+
+        dlogpdstd = dlogpdstd * qdict['std'] + 1
+
+        #dlpdfreqs = (self.data - freqs) / std ** 2
+        #dlpdstd = sum((-std ** 2 + (self.data - freqs) **2) / std ** 3) * qdict['std'] + 1
+        #logp = sum(0.5 * (-((self.data - freqs) **2 / std**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
 
         logp_total += logp + sum([q[self.order[p]] for p in self.constrained_positive])
 
@@ -111,10 +145,10 @@ class HMC():
         #logp = sum(0.5 * (-((q[self.params] - q[self.mus]) **2 / q[self.stds]**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(q[self.stds])))
         #logp_total += logp
 
-        dlpdl = dlpdfreqs * dfreqsdl
+        dlpdl = dlogpdfreqs * dfreqsdl
 
         for p, i in self.order.items():
-            if p == 'std':
+            if type(p) == str:
                 continue
 
             dKdp, _ = polybasis.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp, self.pv, self.density)
@@ -125,12 +159,17 @@ class HMC():
 
             dlogp_total[i] = (dlpdp * qdict[p] + 1) if p in self.constrained_positive else dlpdp
 
-        dlogp_total[self.order['std']] = dlpdstd
+        dlogp_total[self.order['std']] = dlogpdstd
+        dlogp_total[self.order['a']] = dlogpda
+        dlogp_total[self.order['b']] = dlogpdb
 
         return -logp_total, -dlogp_total
 
     def set_labels(self, labels):
-        self.labels = labels
+        self.labels = { 'a' : 'a', 'b' : 'b', 'std' : 'std' }
+
+        for l in labels:
+            self.labels[l] = labels[l]
 
     def set_timestepping(self, epsilon = 0.0001, L = 50, param_scaling = None):
         self.epsilon = epsilon
@@ -237,12 +276,21 @@ class HMC():
 
         freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
 
-        print "Mean error: ", numpy.mean(freqs - self.data)
-        print "Std deviation in error: ", numpy.std(freqs - self.data)
+        error = (freqs - self.data) - (qdict['a'] * numpy.arange(len(self.data))**2 + qdict['b'])
 
-        print "Computed, Measured"
-        for freq, dat in zip(freqs, self.data):
-            print "{0:0.{2}f}, {1:0.{2}f}".format(freq, dat, precision)
+        print "Mean error: ", numpy.mean(error)
+        print "Std deviation in error: ", numpy.std(error)
+
+        print error
+
+        output = []
+        print "Computed, Measured, Difference, Error Bound"
+        for i, (freq, dat) in enumerate(zip(freqs, self.data)):
+            print "{0:0.{2}f}, {1:0.{2}f}, {3:0.{2}f}, {4:0.{2}f}".format(freq, dat, precision, freq - dat, qdict['a'] * i ** 2 + qdict['b'])
+
+            output.append([(i ** 2), freq - dat])
+
+        return output
 
     def posterior_predictive(self, lastN = 200, precision = 5):
         lastN = min(lastN, len(self.qs))
@@ -263,10 +311,10 @@ class HMC():
 
             posterior_predictive[:, i] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
 
-        l = numpy.percentile(posterior_predictive, 5, axis = 1)
-        r = numpy.percentile(posterior_predictive, 5, axis = 1)
+        l = numpy.percentile(posterior_predictive, 2.5, axis = 1)
+        r = numpy.percentile(posterior_predictive, 97.5, axis = 1)
 
-        print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "5th %", "measured", "95th %")
+        print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
         for ll, meas, rr in zip(l, self.data, r):
             print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
 
@@ -315,16 +363,22 @@ class HMC():
         return "\n".join(output)
 
     def derivative_check(self):
-        for i in range(len(self.current_q)):
+        for p, name in self.labels.items():
+            i = self.order[p]
             q = self.current_q.copy()
 
             q2 = q.copy()
 
-            q2[i] *= 1.0000001
+            q2[i] *= 1.000001
+
+            if (q2[i] - q[i]) < 1e-7:
+                q2[i] = q[i] + 1e-7
 
             U1, gradU = self.UgradU(q)
             U2, gradU = self.UgradU(q2)
 
+            print name
+            print U2, U1
             print "Computed: ", (U2 - U1) / (q2[i] - q[i])
             print "Analytical: ", gradU[i]
             print ""

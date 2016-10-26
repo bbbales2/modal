@@ -79,7 +79,7 @@ data = numpy.array([109.076,
 L = 50
 # start epsilon at .0001 and try larger values like .0005 after running for a while
 # epsilon is timestep, we want to make as large as possibe, wihtout getting too many rejects
-epsilon = 0.0001
+epsilon = 0.00005
 
 # Set this to true to debug the L and eps values
 debug = False
@@ -103,20 +103,31 @@ hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
               density = density, X = X, Y = Y, Z = Z,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
-              parameters = { c11 : 2.0, anisotropic : 1.0, c44 : 1.0, 'std' : 5.0 }) # Parameters
+              parameters = { 'a' : 0.05, 'b' : 81.0, c11 : 2.0, anisotropic : 1.0, c44 : 1.0, 'std' : 10.0 }) # Parameters
 
-hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
+hmc.set_labels({ c11 : 'c11', anisotropic : 'anisotropic', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 
 hmc.sample(debug = True)
 #%%
+hmc.derivative_check()
+#%%
 hmc.posterior_predictive()
+#%%
+data1 = hmc.print_current()
+data1 = numpy.array(data1)
+#%%
+import sklearn.linear_model
+
+lr = sklearn.linear_model.LinearRegression()
+
+lr.fit(data1[:, 0:1], data1[:, 1])
 #%%
 print hmc.saves()
 #%%
 reload(rus)
 
-hmc.set_timestepping(epsilon = epsilon * 2, L = 50)
+hmc.set_timestepping(epsilon = epsilon, L = 50)
 
 hmc.sample(debug = False)
 

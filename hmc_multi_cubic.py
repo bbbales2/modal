@@ -190,7 +190,7 @@ accepts.append(current_q)
 L = 50
 # start epsilon at .0001 and try larger values like .0005 after running for a while
 # epsilon is timestep, we want to make as large as possibe, wihtout getting too many rejects
-epsilon = 0.001
+epsilon = 0.0001
 
 # Set this to true to debug the L and eps values
 debug = False
@@ -433,3 +433,50 @@ for s, density, X, Y, Z in zip(range(S), densities, Xs, Ys, Zs):
     #print "computed, accepted"
     #for e1, dat in zip(freqst, data):
     #    print "{0:0.3f} {1:0.3f}".format(e1, dat)
+#%%
+# Forward problem
+Ns = [3, 4, 5, 6, 7, 8]
+# This snippet is helpful to test the last accepted sample
+density, X, Y, Z = densities[0], Xs[0], Ys[0], Zs[0]
+freqs = []
+for N_ in Ns:
+    #c11, anisotropic, c44, std = current_q
+
+    if N_ == 8:
+        c11 = 1.73
+        c44 = 0.44
+    else:
+        c11 = 1.73
+        c44 = 0.76
+
+    anisotropic = 1.0
+    std = 2.0
+
+    c12 = -(c44 * 2.0 / anisotropic - c11)
+
+    dp, pv, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasis.build(N_, X, Y, Z)
+
+    C = numpy.array([[c11, c12, c12, 0, 0, 0],
+                     [c12, c11, c12, 0, 0, 0],
+                     [c12, c12, c11, 0, 0, 0],
+                     [0, 0, 0, c44, 0, 0],
+                     [0, 0, 0, 0, c44, 0],
+                     [0, 0, 0, 0, 0, c44]])
+
+    K, M = polybasis.buildKM(C, dp, pv, density)
+    eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(data[0]) - 1))
+    freqst = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+
+    freqs.append(freqst)
+
+    #print numpy.mean(freqst - data[s])
+    #print numpy.std(freqst - data[s])
+
+freqs = numpy.array(freqs)
+
+plt.plot(freqs.T)
+plt.show()
+for i in range(len(Ns) - 1):
+    plt.plot(freqs[i] - freqs[-1])
+plt.legend(Ns[:-1])
+plt.show()
