@@ -12,7 +12,7 @@ reload(rus)
 #%%
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 8
+N = 6
 
 ## Dimensions for TF-2
 X = 0.007753
@@ -68,7 +68,7 @@ data = numpy.array([109.076,
 363.798,
 364.862,
 371.704,
-373.248])
+373.248])[:30]
 
 #%%
 
@@ -79,7 +79,7 @@ data = numpy.array([109.076,
 L = 50
 # start epsilon at .0001 and try larger values like .0005 after running for a while
 # epsilon is timestep, we want to make as large as possibe, wihtout getting too many rejects
-epsilon = 0.00005
+epsilon = 0.0001
 
 # Set this to true to debug the L and eps values
 debug = False
@@ -103,7 +103,7 @@ hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
               density = density, X = X, Y = Y, Z = Z,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
-              parameters = { 'a' : 0.05, 'b' : 81.0, c11 : 2.0, anisotropic : 1.0, c44 : 1.0, 'std' : 10.0 }) # Parameters
+              parameters = { 'a' : 0.05, 'b' : 30.0, c11 : 2.0, anisotropic : 1.0, c44 : 1.0, 'std' : 10.0 }) # Parameters
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'anisotropic', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
@@ -127,7 +127,7 @@ print hmc.saves()
 #%%
 reload(rus)
 
-hmc.set_timestepping(epsilon = epsilon, L = 50)
+hmc.set_timestepping(epsilon = 4 * epsilon, L = 50)
 
 hmc.sample(debug = False)
 
