@@ -5,6 +5,7 @@ import pyximport
 pyximport.install(reload_support = True)
 import polybasis
 import scipy
+import numbers
 #%%
 import time
 #%%
@@ -31,6 +32,9 @@ class HMC():
         self.initial_conditions = parameters
         self.labels = {}
 
+        if isinstance(resonance_modes[0], numbers.Number):
+            resonance_modes = [resonance_modes]
+
         self.constrained_positive = set()
         if constrained_positive != None:
             self.constrained_positive = set(constrained_positive)
@@ -45,6 +49,11 @@ class HMC():
         self.labels['std'] = 'std'
 
         self.data = resonance_modes
+        self.S = len(resonance_modes)
+
+        self.modes = []
+        for s in range(self.S):
+            self.modes.append(len(self.data[s]))
 
         for p in self.initial_conditions:
             if p != 'std':
@@ -96,36 +105,40 @@ class HMC():
         # Likelihood p(data | params)
         K, M = polybasis.buildKM(C, self.dp, self.pv, self.density)
 
-        eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(self.data) - 1))
+        eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
 
         freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
         dfreqsdl = 0.5e11 / (numpy.sqrt(eigs * 1e11) * numpy.pi * 2000)
 
-        dlpdfreqs = (self.data - freqs) / std ** 2
-        dlpdstd = sum((-std ** 2 + (self.data - freqs) **2) / std ** 3) * qdict['std'] + 1
-        logp = sum(0.5 * (-((self.data - freqs) **2 / std**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
-
-        logp_total += logp + sum([q[self.order[p]] for p in self.constrained_positive])
-
-        # Param likelihood p(params | hyper)
-        #logp = sum(0.5 * (-((q[self.params] - q[self.mus]) **2 / q[self.stds]**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(q[self.stds])))
-        #logp_total += logp
-
-        dlpdl = dlpdfreqs * dfreqsdl
-
+        dKdps = {}
         for p, i in self.order.items():
             if p == 'std':
                 continue
 
-            dKdp, _ = polybasis.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp, self.pv, self.density)
+            dKdps[p], _ = polybasis.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp, self.pv, self.density)
 
-            dldp = numpy.array([evecs[:, j].T.dot(dKdp.dot(evecs[:, j])) for j in range(evecs.shape[1])])
+        for s in range(self.S):
+            dlpdfreqs = (self.data[s] - freqs[:self.modes[s]]) / std ** 2
+            dlpdstd = sum((-std ** 2 + (self.data[s] - freqs[:self.modes[s]]) **2) / std ** 3) * qdict['std'] + 1
+            logp = sum(0.5 * (-((self.data[s] - freqs[:self.modes[s]]) **2 / std**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
 
-            dlpdp = dlpdl.dot(dldp)
+            logp_total += logp + sum([q[self.order[p]] for p in self.constrained_positive])
 
-            dlogp_total[i] = (dlpdp * qdict[p] + 1) if p in self.constrained_positive else dlpdp
+            dlpdl = dlpdfreqs * dfreqsdl
 
-        dlogp_total[self.order['std']] = dlpdstd
+            for p, i in self.order.items():
+                if p == 'std':
+                    continue
+
+                dKdp, _ = polybasis.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp, self.pv, self.density)
+
+                dldp = numpy.array([evecs[:, j].T.dot(dKdps[p].dot(evecs[:, j])) for j in range(evecs.shape[1])])
+
+                dlpdp = dlpdl.dot(dldp)
+
+                dlogp_total[i] += (dlpdp * qdict[p] + 1) if p in self.constrained_positive else dlpdp
+
+            dlogp_total[self.order['std']] += dlpdstd
 
         return -logp_total, -dlogp_total
 
@@ -233,16 +246,22 @@ class HMC():
 
         K, M = polybasis.buildKM(C, self.dp, self.pv, self.density)
 
-        eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(self.data) - 1))
+        eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
 
         freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
 
-        print "Mean error: ", numpy.mean(freqs - self.data)
-        print "Std deviation in error: ", numpy.std(freqs - self.data)
+        errors = []
+        for s in range(self.S):
+            errors.extend(freqs - self.data[s])
 
-        print "Computed, Measured"
-        for freq, dat in zip(freqs, self.data):
-            print "{0:0.{2}f}, {1:0.{2}f}".format(freq, dat, precision)
+        print "Mean error: ", numpy.mean(errors)
+        print "Std deviation in error: ", numpy.std(errors)
+
+        print ", ".join(["Computed"] + ["Measured"] * self.S)
+        for i, freq in enumerate(freqs):
+            toPrint = [freq] + [self.data[s][i] if i < len(self.data[s]) else None for s in range(self.S)]
+
+            print ", ".join([("{0:0.{1}f}".format(a, precision) if a else "") for a in toPrint])
 
     def posterior_predictive(self, lastN = 200, precision = 5):
         lastN = min(lastN, len(self.qs))
@@ -259,16 +278,18 @@ class HMC():
 
             K, M = polybasis.buildKM(C, self.dp, self.pv, self.density)
 
-            eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(self.data) - 1))
+            eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
 
             posterior_predictive[:, i] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
 
         l = numpy.percentile(posterior_predictive, 5, axis = 1)
         r = numpy.percentile(posterior_predictive, 5, axis = 1)
 
-        print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "5th %", "measured", "95th %")
-        for ll, meas, rr in zip(l, self.data, r):
-            print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
+        for s in range(self.S):
+            print "For dataset {0}".format(s)
+            print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "5th %", "measured", "95th %")
+            for ll, meas, rr in zip(l, self.data[s], r):
+                print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
 
     def save(self, filename):
         f = open(filename, 'w')

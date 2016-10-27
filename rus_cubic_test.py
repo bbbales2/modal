@@ -101,18 +101,22 @@ C = sympy.Matrix([[c11, c12, c12, 0, 0, 0],
 
 hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
               density = density, X = X, Y = Y, Z = Z,
-              resonance_modes = data, # List of resonance modes
+              resonance_modes = [data, data + 10 * numpy.random.randn(len(data))], # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
               parameters = { c11 : 2.0, anisotropic : 1.0, c44 : 1.0, 'std' : 5.0 }) # Parameters
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
-
+#%%
 hmc.sample(debug = True)
+#%%
+hmc.print_current()
 #%%
 hmc.posterior_predictive()
 #%%
 print hmc.saves()
+#%%
+hmc.derivative_check()
 #%%
 reload(rus)
 
