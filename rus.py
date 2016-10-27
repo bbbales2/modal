@@ -130,8 +130,6 @@ class HMC():
                 if p == 'std':
                     continue
 
-                dKdp, _ = polybasis.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp, self.pv, self.density)
-
                 dldp = numpy.array([evecs[:, j].T.dot(dKdps[p].dot(evecs[:, j])) for j in range(evecs.shape[1])])
 
                 dlpdp = dlpdl.dot(dldp)
