@@ -12,15 +12,15 @@ reload(rus)
 #%%
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 8
+N = 10
 
 ## Dimensions for TF-2
-X = 0.007753
-Y = 0.009057
-Z = 0.013199
+X = 0.011959#0.007753
+Y = 0.013953#0.009057
+Z = 0.019976#0.013199
 
 #Sample density
-density = 4401.695921 #Ti-64-TF2
+density = 8700.0#4401.695921 #Ti-64-TF2
 
 c110 = 2.0
 anisotropic0 = 1.5
@@ -31,44 +31,98 @@ c120 = -(c440 * 2.0 / anisotropic0 - c110)
 std0 = 5.0
 
 # Ti-64-TF2 Test Data
-data = numpy.array([109.076,
-136.503,
-144.899,
-184.926,
-188.476,
-195.562,
-199.246,
-208.460,
-231.220,
-232.630,
-239.057,
-241.684,
-242.159,
-249.891,
-266.285,
-272.672,
-285.217,
-285.670,
-288.796,
-296.976,
-301.101,
-303.024,
-305.115,
-305.827,
-306.939,
-310.428,
-318.000,
-319.457,
-322.249,
-323.464,
-324.702,
-334.687,
-340.427,
-344.087,
-363.798,
-364.862,
-371.704,
-373.248])
+#data = numpy.array([109.076,
+#136.503,
+#144.899,
+#184.926,
+#188.476,
+#195.562,
+#199.246,
+#208.460,
+#231.220,
+#232.630,
+#239.057,
+#241.684,
+#242.159,
+#249.891,
+#266.285,
+#272.672,
+#285.217,
+#285.670,
+#288.796,
+#296.976,
+#301.101,
+#303.024,
+#305.115,
+#305.827,
+#306.939,
+#310.428,
+#318.000,
+#319.457,
+#322.249,
+#323.464,
+#324.702,
+#334.687,
+#340.427,
+#344.087,
+#363.798,
+#364.862,
+#371.704,
+#373.248])
+
+data = numpy.array([71.25925,
+75.75875,
+86.478,
+89.947375,
+111.150125,
+112.164125,
+120.172125,
+127.810375,
+128.6755,
+130.739875,
+141.70025,
+144.50375,
+149.40075,
+154.35075,
+156.782125,
+157.554625,
+161.0875,
+165.10325,
+169.7615,
+173.44925,
+174.11675,
+174.90625,
+181.11975,
+182.4585,
+183.98625,
+192.68125,
+193.43575,
+198.793625,
+201.901625,
+205.01475,
+206.619,
+208.513875,
+208.83525,
+212.22525,
+212.464125,
+221.169625,
+225.01225,
+227.74775,
+228.31175,
+231.4265,
+235.792875,
+235.992375,
+236.73675,
+238.157625,
+246.431125,
+246.797125,
+248.3185,
+251.69425,
+252.97225,
+253.9795,
+256.869875,
+258.23825,
+259.39025])
 
 #%%
 
@@ -101,14 +155,19 @@ C = sympy.Matrix([[c11, c12, c12, 0, 0, 0],
 
 hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
               density = density, X = X, Y = Y, Z = Z,
-              resonance_modes = [data, data + 10 * numpy.random.randn(len(data))], # List of resonance modes
+              resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
-              parameters = { c11 : 2.0, anisotropic : 1.0, c44 : 1.0, 'std' : 5.0 }) # Parameters
+              parameters = { c11 : 2.0, anisotropic : 2.0, c44 : 1.0, 'std' : 5.0 }, # Parameters
+              rotations = True)
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
-#%%
 hmc.sample(debug = True)
+#%%
+hmc.derivative_check()
+#%%
+hmc.set_timestepping(epsilon = epsilon * 10, L = 50)
+hmc.sample(debug = False)#True)
 #%%
 hmc.print_current()
 #%%
@@ -116,7 +175,43 @@ hmc.posterior_predictive()
 #%%
 print hmc.saves()
 #%%
-hmc.derivative_check()
+import polybasisqu
+if True:
+    def posterior_predictive(self, lastN = 200, precision = 5):
+        lastN = min(lastN, len(self.qs))
+
+        posterior_predictive = numpy.zeros((max(self.modes), lastN, self.R))
+
+        for i, (q, qr) in enumerate(zip(self.qs[-lastN:], self.qrs[-lastN:])):
+            for r in range(self.R):
+                qdict = self.qdict(q)
+
+                for p in qdict:
+                    qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
+
+                C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
+
+                w, x, y, z = qr[self.rotations[r]]
+
+                C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
+
+                K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
+
+                eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
+
+                posterior_predictive[:, i, r] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+        #print l, r, posterior_predictive[0]
+
+        for s in range(self.S):
+            l = numpy.percentile(posterior_predictive[:, :, self.rotations[s]], 2.5, axis = 1)
+            r = numpy.percentile(posterior_predictive[:, :, self.rotations[s]], 97.5, axis = 1)
+
+            print "For dataset {0}".format(s)
+            print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
+            for ll, meas, rr in zip(l, self.data[s], r):
+                print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
+
+posterior_predictive(hmc, 30)
 #%%
 reload(rus)
 
