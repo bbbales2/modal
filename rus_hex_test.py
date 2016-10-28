@@ -74,7 +74,7 @@ data = numpy.array([84.824,
 396.2695,
 399.8153333,
 404.451,
-407.6056667])[:30]
+407.6056667])
 
 #%%
 
@@ -112,7 +112,7 @@ hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
 
 hmc.set_labels({ c11 : 'c11', c12 : 'c12', c13 : 'c13', c33 : 'c44', c44 : 'c44', 'std' : 'std' })
 
-hmc.set_timestepping(epsilon = epsilon, L = 50, param_scaling = { 'std' : 2.0 }) # Param scaling -- this means make param std move around about twice as fast as the other parameters
+hmc.set_timestepping(epsilon = epsilon, L = 50, param_scaling = { 'std' : 1.1 }) # Param scaling -- this means make param std move around about twice as fast as the other parameters
 
 hmc.sample(debug = True)
 #%%
@@ -120,7 +120,7 @@ hmc.derivative_check()
 #%%
 reload(rus)
 
-hmc.set_timestepping(epsilon = epsilon * 10, L = 50)
+hmc.set_timestepping(epsilon = epsilon * 10, L = 50, param_scaling = { 'std' : 1.1 })
 
 hmc.sample(debug = False)
 

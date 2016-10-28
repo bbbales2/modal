@@ -392,12 +392,12 @@ numpy.savetxt(filename, qs, header = 'c11 anisotropic c44 std')
 #%%
 # This block does the plotting
 
-c11s, anisotropics, c44s, stds = [numpy.array(aa)[-2000:] for aa in zip(*qs)]#
+c11s, anisotropics, c44s, stds = [numpy.array(aa)[-1000:] for aa in zip(*qs)]#
 import matplotlib.pyplot as plt
 import seaborn
 
 for name, data1 in zip(['c11', 'aniso ratio', 'c44', 'std deviation', '-logp'],
-                      [c11s, anisotropics, c44s, stds, logps[-20000:]]):
+                      [c11s, anisotropics, c44s, stds, logps[-1000:]]):
     plt.plot(data1)
     plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 30)
     plt.tick_params(axis='y', which='major', labelsize=16)
@@ -414,7 +414,7 @@ for name, data1 in zip(['c11', 'aniso ratio', 'c44', 'std deviation', '-logp'],
 numpy.savetxt("/home/bbales2/modal/paper/ti/qs.csv", qs, delimiter = ",", comments = "", header = "c11, anisotropic, c44, std")
 #%%
 import seaborn
-c11s, anisotropics, c44s, stds = [numpy.array(a)[-1500:] for a in zip(*qs)]#
+c11s, anisotropics, c44s, stds = [numpy.array(ab)[-1000:] for ab in zip(*qs)]#
 
 for name, data1 in zip(['c11', 'aniso ratio', 'c44', 'std dev'],
                       [c11s, anisotropics, c44s, stds]):

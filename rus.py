@@ -261,12 +261,12 @@ class HMC():
 
             eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(self.data) - 1))
 
-            posterior_predictive[:, i] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+            posterior_predictive[:, i] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000) + qdict['std'] * numpy.random.randn()
 
-        l = numpy.percentile(posterior_predictive, 5, axis = 1)
-        r = numpy.percentile(posterior_predictive, 5, axis = 1)
+        l = numpy.percentile(posterior_predictive, 2.5, axis = 1)
+        r = numpy.percentile(posterior_predictive, 97.5, axis = 1)
 
-        print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "5th %", "measured", "95th %")
+        print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
         for ll, meas, rr in zip(l, self.data, r):
             print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
 

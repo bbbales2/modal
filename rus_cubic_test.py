@@ -4,8 +4,11 @@ import numpy
 import time
 import scipy
 import sympy
-import os
-os.chdir('/home/bbales2/modal')
+#import os
+#os.chdir('/home/pollock/modal')
+
+import sys
+sys.path.append('/home/pollock/modal')
 
 import rus
 reload(rus)
@@ -105,27 +108,67 @@ hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
               stiffness_matrix = C, # Stiffness matrix
               parameters = { c11 : 2.0, anisotropic : 1.0, c44 : 1.0, 'std' : 5.0 }) # Parameters
 
+# Tell the code when printing out variable c11 to use the text label "c11"
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
+
+# Set the timestep
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 
+# Generate samples printing inidividual HMC timesteps for debugging
 hmc.sample(debug = True)
 #%%
-hmc.posterior_predictive()
+# Show 95% confidence intervals on resonance modes for lastN parameterizations
+hmc.posterior_predictive(lastN = 20)
 #%%
-print hmc.saves()
+# Print the CSV file with the samples in it
+import datetime
+import tempfile
+
+_, filename = tempfile.mkstemp(prefix = "data_{0}_".format(datetime.datetime.now().strftime("%Y-%m-%d")), suffix = ".txt", dir = '/home/pollock/Desktop')
+
+hmc.save(filename)
+#%%
+# Print the resonance modes compared with the current parameterization
+hmc.print_current()
 #%%
 reload(rus)
 
-hmc.set_timestepping(epsilon = epsilon * 2, L = 50)
+# Change timestep
+hmc.set_timestepping(epsilon = epsilon * 5, L = 50)
 
+# Run without HMC debug information
 hmc.sample(debug = False)
 
-##%%
+#%%
 # Working on this -- not ready yet
 reload(rus)
 
 print hmc.saves()
 
+#%%
+reload(rus)
+
+hmc.set_timestepping(epsilon = epsilon * 20, L = 50)
+
+hmc.sample(debug = False)
+#%%
+# Plot the traceplots and the distributions!
+import matplotlib.pyplot as plt
+import seaborn
+
+for name, data1 in zip(*hmc.format_samples()):
+    plt.plot(data1)
+    plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
+    plt.tick_params(axis='y', which='major', labelsize=16)
+    plt.show()
+
+for name, data1 in zip(*hmc.format_samples()):
+    data1 = data1[-200:]
+    seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
+    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
+    plt.tick_params(axis='x', which='major', labelsize=16)
+    plt.show()
+    
 #%%
 reload(rus)
 
@@ -160,25 +203,3 @@ hmc.set_labels({ c11mc12 : 'c11 - c12', c11p2c12 : 'c11 + 2 * c12', c44 : 'c44',
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 
 hmc.sample(debug = True)
-#%%
-reload(rus)
-
-hmc.set_timestepping(epsilon = epsilon * 20, L = 50)
-
-hmc.sample(debug = False)
-#%%
-import matplotlib.pyplot as plt
-import seaborn
-
-for name, data1 in zip(*hmc.format_samples()):
-    plt.plot(data1)
-    plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
-    plt.tick_params(axis='y', which='major', labelsize=16)
-    plt.show()
-
-for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-200:]
-    seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
-    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
-    plt.tick_params(axis='x', which='major', labelsize=16)
-    plt.show()
