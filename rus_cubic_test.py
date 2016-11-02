@@ -10,6 +10,8 @@ os.chdir('/home/bbales2/modal')
 import rus
 reload(rus)
 #%%
+#656 samples
+#%%
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
 N = 10
@@ -166,52 +168,14 @@ hmc.sample(debug = True)
 #%%
 hmc.derivative_check()
 #%%
-hmc.set_timestepping(epsilon = epsilon * 10, L = 50)
+hmc.set_timestepping(epsilon = epsilon * 5, L = 50)
 hmc.sample(debug = False)#True)
 #%%
 hmc.print_current()
 #%%
 hmc.posterior_predictive()
 #%%
-print hmc.saves()
-#%%
-import polybasisqu
-if True:
-    def posterior_predictive(self, lastN = 200, precision = 5):
-        lastN = min(lastN, len(self.qs))
-
-        posterior_predictive = numpy.zeros((max(self.modes), lastN, self.R))
-
-        for i, (q, qr) in enumerate(zip(self.qs[-lastN:], self.qrs[-lastN:])):
-            for r in range(self.R):
-                qdict = self.qdict(q)
-
-                for p in qdict:
-                    qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
-
-                C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
-
-                w, x, y, z = qr[self.rotations[r]]
-
-                C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
-
-                K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
-
-                eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
-
-                posterior_predictive[:, i, r] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
-        #print l, r, posterior_predictive[0]
-
-        for s in range(self.S):
-            l = numpy.percentile(posterior_predictive[:, :, self.rotations[s]], 2.5, axis = 1)
-            r = numpy.percentile(posterior_predictive[:, :, self.rotations[s]], 97.5, axis = 1)
-
-            print "For dataset {0}".format(s)
-            print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
-            for ll, meas, rr in zip(l, self.data[s], r):
-                print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
-
-posterior_predictive(hmc, 30)
+hmc.save('/home/bbales2/modal/paper/cmsx4/qs.csv')
 #%%
 reload(rus)
 

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 os.chdir("/home/bbales2/modal")
 
-qs = numpy.loadtxt("/home/bbales2/modal/paper/cmsx4/qs2.csv", delimiter = ",", skiprows = 1)
+qs = numpy.loadtxt("/home/bbales2/modal/paper/cmsx4/qs.csv", delimiter = ",", skiprows = 1)
 
 #%%
 
@@ -21,7 +21,7 @@ print gmm.weights_
 print gmm.means_
 print gmm.covars_
 
-plt.hist(data[:, 0])
+plt.hist(data[:, 2])
 plt.show()
 
 plt.hist(gmm.sample(2000))
