@@ -266,11 +266,13 @@ class HMC():
             current_pr = pr.copy()
             # Make a half step for momentum at the beginning
             U, gradU, gradUr = self.UgradU(q, qr)
-            p = p - epsilon * gradU / 2            
-            pr = pr - epsilon * gradUr / 2 # handle gradUr == None for self.rations is False
+            p = p - epsilon * gradU / 2
 
-            for r in range(self.R):
-                pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
+            if self.rotations:
+                pr = pr - epsilon * gradUr / 2
+
+                for r in range(self.R):
+                    pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
 
             # Alternate full steps for position and momentum
             for i in range(L):
@@ -301,10 +303,12 @@ class HMC():
                 if i != L - 1:
                     U, gradU, gradUr = self.UgradU(q, qr)
                     p = p - epsilon * gradU
-                    pr = pr - epsilon * gradUr
 
-                    for r in range(self.R):
-                        pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
+                    if self.rotations:
+                        pr = pr - epsilon * gradUr
+
+                        for r in range(self.R):
+                            pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
 
                 if debug:
                     print "New q: {0}".format(self.print_q(q, qr))
@@ -314,10 +318,12 @@ class HMC():
             U, gradU, gradUr = self.UgradU(q, qr)
             # Make a half step for momentum at the end.
             p = p - epsilon * gradU / 2
-            pr = pr - epsilon * gradUr / 2
 
-            for s in range(self.R):
-                pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
+            if self.rotations:
+                pr = pr - epsilon * gradUr / 2
+
+                for s in range(self.R):
+                    pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
 
             # Negate momentum at end of trajectory to make the proposal symmetric
             p = -p
@@ -468,7 +474,7 @@ class HMC():
             samples.append(tmp_samples)
 
         for r in range(self.R):
-            for name, i in zip(["w", "x", "y", "x"], range(4)):
+            for name, i in zip(["w", "x", "y", "z"], range(4)):
 
                 header.append("{0}_{1}".format(name, r))
 
