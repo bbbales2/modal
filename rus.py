@@ -6,6 +6,9 @@ pyximport.install(reload_support = True)
 import polybasisqu
 import scipy
 import numbers
+import seaborn
+import pandas
+import matplotlib.pyplot as plt
 #%%
 import time
 #%%
@@ -348,19 +351,21 @@ class HMC():
 
                     self.accepts.append(len(self.qs) - 1)
 
-                    print "Accepted ({0} accepts so far): {1}".format(len(self.accepts), self.print_q(self.current_q, self.current_qr))
+                    print "Accepted ({0} accepts so far):".format(len(self.accepts))
+                    print self.print_q(self.current_q, self.current_qr)
                 else:
-                    print "Rejected: ", self.current_q
+                    print "Rejected: "
+                    print self.print_q(self.current_q, self.current_qr)
 
-                self.qs.append(q.copy())
-                self.qrs.append(qr.copy())
+                self.qs.append(self.current_q.copy())
+                self.qrs.append(self.current_qr.copy())
                 print "Energy change ({0} samples, {1} accepts): ".format(len(self.qs), len(self.accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
 
     def print_q(self, q = None, qr = None, precision = 5):
-        if q == None:
+        if q is None:
             q = self.current_q
 
-        if qr == None:
+        if qr is None:
             qr = self.current_qr
 
         out = []
@@ -384,38 +389,47 @@ class HMC():
 
     def print_current(self, precision = 5):
         qdict = self.qdict(self.current_q)
+        qr = self.current_qr
 
         for p in qdict:
             qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
 
-        C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
+        for r in range(max(self.R, 1)):
+            C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
 
-        K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
+            if self.rotations:
+                w, x, y, z = qr[self.rotations[r]]
 
-        eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
+                C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
 
-        freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+            K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
 
-        errors = []
-        for s in range(self.S):
-            errors.extend(freqs - self.data[s])
+            eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
 
-        print "Mean error: ", numpy.mean(errors)
-        print "Std deviation in error: ", numpy.std(errors)
+            freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
 
-        print ", ".join(["Computed"] + ["Measured"] * self.S)
-        for i, freq in enumerate(freqs):
-            toPrint = [freq] + [self.data[s][i] if i < len(self.data[s]) else None for s in range(self.S)]
+            errors = []
+            for s in range(self.S):
+                errors.extend(freqs - self.data[s])
 
-            print ", ".join([("{0:0.{1}f}".format(a, precision) if a else "") for a in toPrint])
+            if self.rotations:
+                print "Rotation: {0}".format(r)
+            print "Mean error: ", numpy.mean(errors)
+            print "Std deviation in error: ", numpy.std(errors)
 
-    def posterior_predictive(self, lastN = 200, precision = 5):
+            print ", ".join(["Computed"] + ["Measured"] * self.S)
+            for i, freq in enumerate(freqs):
+                toPrint = [freq] + [self.data[s][i] if i < len(self.data[s]) else None for s in range(self.S)]
+
+                print ", ".join([("{0:0.{1}f}".format(a, precision) if a else "") for a in toPrint])
+
+    def posterior_predictive(self, lastN = 200, precision = 5, plot = True):
         lastN = min(lastN, len(self.qs))
 
-        posterior_predictive = numpy.zeros((max(self.modes), lastN, self.R))
+        posterior_predictive = numpy.zeros((max(self.modes), lastN, max(self.R, 1)))
 
         for i, (q, qr) in enumerate(zip(self.qs[-lastN:], self.qrs[-lastN:])):
-            for r in range(self.R):
+            for r in range(max(self.R, 1)):
                 qdict = self.qdict(q)
         
                 qr = self.current_qr
@@ -425,9 +439,10 @@ class HMC():
 
                 C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
 
-                w, x, y, z = qr[self.rotations[r]]
+                if self.rotations:
+                    w, x, y, z = qr[self.rotations[r]]
 
-                C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
+                    C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
 
                 K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
 
@@ -437,13 +452,43 @@ class HMC():
         #print l, r, posterior_predictive[0]
 
         for s in range(self.S):
-            l = numpy.percentile(posterior_predictive[:, :, self.rotations[s]], 2.5, axis = 1)
-            r = numpy.percentile(posterior_predictive[:, :, self.rotations[s]], 97.5, axis = 1)
+            if self.rotations:
+                r = self.rotations[s]
+            else:
+                r = 0
 
-            print "For dataset {0}".format(s)
-            print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
-            for ll, meas, rr in zip(l, self.data[s], r):
-                print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
+            ppl = numpy.percentile(posterior_predictive[:, :, r], 2.5, axis = 1)
+            ppr = numpy.percentile(posterior_predictive[:, :, r], 97.5, axis = 1)
+
+            if plot:
+                data = []
+
+                for l in range(len(self.data[s])):
+                    tmp = []
+                    for ln in range(lastN):
+                        tmp.append(posterior_predictive[l, ln, r] - self.data[s][l])
+
+                    data.append(tmp)
+                    #data.append([l, self.data[s][l], 'Measured'])
+
+                #df = pandas.DataFrame(data, columns = ['Modes', 'Frequency', 'Type'])
+
+                #seaborn.boxplot(x = 'Modes', y = 'Frequency', data = df)
+                data = numpy.array(data)
+                plt.boxplot(numpy.array(data).transpose())
+
+                #ax1 = plt.gca()
+
+                #for ll, meas, rr, tick in zip(ppl, self.data[s], ppr, range(len(self.data[s]))):
+                #    ax1.text(tick + 1, ax1.get_ylim()[1] * 0.90, '{0:10.{3}f} {1:10.{3}f} {2:10.{3}f}'.format(ll, meas, rr, precision),
+                #             horizontalalignment='center', rotation=45, size='x-small')
+                plt.xlabel('Mode')
+                plt.ylabel('Computed - Measured (khz)')
+            else:
+                print "For dataset {0}".format(s)
+                print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
+                for ll, meas, rr in zip(ppl, self.data[s], ppr):
+                    print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
 
     def save(self, filename):
         f = open(filename, 'w')
