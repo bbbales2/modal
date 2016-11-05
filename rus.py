@@ -417,6 +417,8 @@ class HMC():
         for i, (q, qr) in enumerate(zip(self.qs[-lastN:], self.qrs[-lastN:])):
             for r in range(self.R):
                 qdict = self.qdict(q)
+        
+                qr = self.current_qr
 
                 for p in qdict:
                     qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
