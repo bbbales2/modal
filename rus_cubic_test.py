@@ -173,7 +173,7 @@ hmc.sample(debug = False)#True)
 #%%
 hmc.print_current()
 #%%
-hmc.posterior_predictive()
+hmc.posterior_predictive(plot = False)
 #%%
 hmc.save('/home/bbales2/modal/paper/cmsx4/qs.csv')
 #%%

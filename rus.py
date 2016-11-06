@@ -2,7 +2,7 @@
 
 import numpy
 import pyximport
-pyximport.install(reload_support = True)
+pyximport.install()#reload_support = True)
 import polybasisqu
 import scipy
 import numbers
@@ -248,14 +248,15 @@ class HMC():
 
         self.L = L
 
-    def sample(self, steps = -1, debug = False):
+    def sample(self, steps = -1, debug = False, silent = False):
         if not hasattr(self, 'epsilon'):
             raise Exception("Must call 'rus.HMC.set_timestepping' before 'rus.HMC.sample'")
 
         epsilon = self.epsilon
         L = self.L
 
-        while True:
+        step = 0
+        while step < steps or steps == -1:
             q = self.current_q.copy()
             qr = self.current_qr.copy()
 
@@ -351,15 +352,21 @@ class HMC():
 
                     self.accepts.append(len(self.qs) - 1)
 
-                    print "Accepted ({0} accepts so far):".format(len(self.accepts))
-                    print self.print_q(self.current_q, self.current_qr)
+                    if not silent or debug:
+                        print "Accepted ({0} accepts so far):".format(len(self.accepts))
+                        print self.print_q(self.current_q, self.current_qr)
                 else:
-                    print "Rejected: "
-                    print self.print_q(self.current_q, self.current_qr)
+                    if not silent or debug:
+                        print "Rejected: "
+                        print self.print_q(self.current_q, self.current_qr)
 
                 self.qs.append(self.current_q.copy())
                 self.qrs.append(self.current_qr.copy())
-                print "Energy change ({0} samples, {1} accepts): ".format(len(self.qs), len(self.accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
+
+                if not silent or debug:
+                    print "Energy change ({0} samples, {1} accepts): ".format(len(self.qs), len(self.accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
+
+            step += 1
 
     def print_q(self, q = None, qr = None, precision = 5):
         if q is None:
@@ -493,12 +500,19 @@ class HMC():
         f.write(self.saves())
         f.close()
 
-    def format_samples(self):
+    def format_samples(self, lastN = -1):
         header = []
         samples = []
 
         printOrder = []
         do_exp = []
+
+        if lastN == -1:
+            qs = self.qs
+            qrs = self.qrs
+        else:
+            qs = self.qs[-lastN:]
+            qrs = self.qrs[-lastN:]
 
         for p, name in self.labels.items():
             if p in self.order:
@@ -513,7 +527,7 @@ class HMC():
         for i, do_exp_ in zip(printOrder, do_exp):
             tmp_samples = []
 
-            for q in self.qs:
+            for q in qs:
                 tmp_samples.append(numpy.exp(q[i]) if do_exp_ else q[i])
 
             samples.append(tmp_samples)
@@ -524,7 +538,7 @@ class HMC():
                 header.append("{0}_{1}".format(name, r))
 
                 tmp_samples = []
-                for qr in self.qrs:
+                for qr in qrs:
                     tmp_samples.append(qr[r, i])
 
                 samples.append(tmp_samples)
