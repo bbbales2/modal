@@ -192,6 +192,66 @@ cpdef buildRot(C, w, x, y, z):
 
     return Crot, dCrotdw, dCrotdx, dCrotdy, dCrotdz, K
 
+cpdef buildRot2(C, w, x, y, z):
+    # Code stolen from Will Lenthe
+    K = numpy.zeros((6, 6))
+    dKdQ = numpy.zeros((6, 6, 3, 3))
+
+    Q = numpy.array([[w**2 - (y**2 + z**2) + x**2, 2.0 * (x * y - w * z), 2.0 * (x * z + w * y)],
+                     [2.0 * (y * x + w * z), w**2 - (x**2 + z**2) + y**2, 2.0 * (y * z - w * x)],
+                     [2.0 * (z * x - w * y), 2.0 * (z * y + w * x), w**2 - (x**2 + y**2) + z**2]])
+
+    dQdw = numpy.array([[2 * w, -2.0 * z, 2.0 * y],
+                        [2.0 * z, 2 * w, -2.0 * x],
+                        [-2.0 * y, 2.0 * x, 2 * w]])
+
+    dQdx = numpy.array([[2 * x, 2.0 * y, 2.0 * z],
+                        [2.0 * y, -2.0 * x, -2.0 * w],
+                        [2.0 * z, 2.0 * w, -2.0 * x]])
+
+    dQdy = numpy.array([[-2 * y, 2 * x, 2 * w],
+                        [2 * x, 2 * y, 2 * z],
+                        [-2 * w, 2 * z, -2 * y]])
+
+    dQdz = numpy.array([[-2 * z, -2 * w, 2 * x],
+                        [2 * w, -2 * z, 2 * y],
+                        [2 * x, 2 * y, 2 * z]])
+
+    Cv = numpy.zeros((3, 3, 3, 3))
+
+    Cv = Cvoigt(C)
+
+    Crot = numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, Q, Q)
+
+    dCrotdw = numpy.einsum('ip, jq, pqrs, kr, ls', dQdw, Q, Cv, Q, Q) + numpy.einsum('ip, jq, pqrs, kr, ls', Q, dQdw, Cv, Q, Q) + \
+        numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, dQdw, Q) + numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, Q, dQdw)
+
+    dCrotdx = numpy.einsum('ip, jq, pqrs, kr, ls', dQdx, Q, Cv, Q, Q) + numpy.einsum('ip, jq, pqrs, kr, ls', Q, dQdx, Cv, Q, Q) + \
+        numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, dQdx, Q) + numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, Q, dQdx)
+
+    dCrotdy = numpy.einsum('ip, jq, pqrs, kr, ls', dQdy, Q, Cv, Q, Q) + numpy.einsum('ip, jq, pqrs, kr, ls', Q, dQdy, Cv, Q, Q) + \
+        numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, dQdy, Q) + numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, Q, dQdy)
+
+    dCrotdz = numpy.einsum('ip, jq, pqrs, kr, ls', dQdz, Q, Cv, Q, Q) + numpy.einsum('ip, jq, pqrs, kr, ls', Q, dQdz, Cv, Q, Q) + \
+        numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, dQdz, Q) + numpy.einsum('ip, jq, pqrs, kr, ls', Q, Q, Cv, Q, dQdz)
+
+    return Crot, dCrotdw, dCrotdx, dCrotdy, dCrotdz, Q
+
+cpdef inline numpy.ndarray[numpy.float_t, ndim = 4] Cvoigt(numpy.ndarray[numpy.float_t, ndim = 2] Ch):
+    cdef numpy.ndarray[numpy.float_t, ndim = 4] C
+    cdef int i, j, k, l, n, m
+
+    C = numpy.zeros((3, 3, 3, 3))
+
+    voigt = [[(0, 0)], [(1, 1)], [(2, 2)], [(1, 2), (2, 1)], [(0, 2), (2, 0)], [(0, 1), (1, 0)]]
+
+    for i in range(6):
+        for j in range(6):
+            for k, l in voigt[i]:
+                for n, m in voigt[j]:
+                    C[k, l, n, m] = Ch[i, j]
+    return C
+
 cpdef buildKM(numpy.ndarray[numpy.float_t, ndim = 2] Ch, numpy.ndarray[numpy.float_t, ndim = 4] dp, numpy.ndarray[numpy.float_t, ndim = 2] pv, float density):
     cdef numpy.ndarray[numpy.float_t, ndim = 6] dpe
     cdef numpy.ndarray[numpy.float_t, ndim = 4] C, Kt, Mt

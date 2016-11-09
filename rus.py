@@ -24,13 +24,14 @@ def printoptions(*args, **kwargs):
     numpy.set_printoptions(**original)
 
 class HMC():
-    def __init__(self, N, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None, rotations = None):
+    def __init__(self, N, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None, rotations = None, T = 1.0):
         self.C = stiffness_matrix
         self.dC = {}
         self.density = density
         self.X = X
         self.Y = Y
         self.Z = Z
+        self.T = T
         self.order = {}
         self.initial_conditions = parameters
         self.labels = {}
@@ -232,7 +233,7 @@ class HMC():
 
             dlogpdq_total[self.order['std']] += dlpdstd
 
-        return -logp_total, -dlogpdq_total, -dlogpdqr_total if self.rotations else None
+        return -logp_total / self.T, -dlogpdq_total / self.T, -dlogpdqr_total / self.T if self.rotations else None
 
     def set_labels(self, labels):
         self.labels = labels
