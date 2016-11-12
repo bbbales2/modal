@@ -411,6 +411,19 @@ current_q = [  2.43914164e+00,   2.87679060e+00,   1.31354678e+00,   6.10899449e
 current_q[4] = numpy.sqrt(1.0 - current_q[5]**2 - current_q[6]**2 - current_q[7]**2)
 
 c11, anisotropic, c44, std, w, x, y, z = current_q
+w = 1.0
+x = 0.0
+y = 0.0
+z = 0.0
+
+#%%
+from rotations import quaternion
+
+tmp = quaternion.Quaternion([w, x, y, z])
+rot = quaternion.Quaternion([0.86835826819129436, -0.34803311754280902, -0.31462551582333742, -0.16074094671286512])
+w, x, y, z = (rot * tmp).wxyz
+
+#%%
 
 c12 = -(c44 * 2.0 / anisotropic - c11)
 

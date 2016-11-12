@@ -159,15 +159,15 @@ hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
               density = density, X = X, Y = Y, Z = Z,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
-              parameters = { c11 : 2.46961, anisotropic : 2.85603, c44 : 1.30453, 'std' : 0.5 }, # Parameters
+              parameters = { c11 : 2.0, anisotropic : 2.0, c44 : 1.0, 'std' : 5.0 }, # Parameters
               rotations = True,
-              T = 5.0)
+              T = 1.0)
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 hmc.sample(steps = 5, debug = True)
 #%%
-hmc.set_timestepping(epsilon = epsilon * 10, L = 75)
+hmc.set_timestepping(epsilon = epsilon * 10, L = 50)
 hmc.sample(debug = False)#True)#False)#True)
 #%%
 hmc.derivative_check()
@@ -318,7 +318,7 @@ for name, data1 in zip(*hmc.format_samples()):
     plt.show()
 #%%
 for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-200:]
+    data1 = data1[-400:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)
