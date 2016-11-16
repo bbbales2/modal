@@ -5,7 +5,7 @@ import time
 import scipy
 import sympy
 import os
-os.chdir('/home/bbales2/modal')
+os.chdir('/home/pollock/modal')
 
 import rus
 reload(rus)
@@ -173,7 +173,13 @@ hmc.sample(debug = False)#True)
 #%%
 hmc.print_current()
 #%%
-hmc.posterior_predictive()
+hmc.posterior_predictive(plot = False)
+#%%
+import matplotlib.pyplot as plt
+hmc.posterior_predictive()#plot = False) #Do this to not get the numbers
+fig = plt.gcf()
+fig.set_size_inches((12, 8))
+plt.show()
 #%%
 hmc.save('/home/bbales2/modal/paper/cmsx4/qs.csv')
 #%%
@@ -264,6 +270,7 @@ reload(rus)
 print hmc.saves()
 
 #%%
+# need some details about how this block works..
 reload(rus)
 
 c11mc12, c11p2c12, c44 = sympy.symbols('c11mc12 c11p2c12 c44')

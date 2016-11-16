@@ -63,7 +63,7 @@ def get_misorientations(g1, g2, n):
             for j in range(len(orthoSym)):
                 qas = qa * orthoSym[j]
                 for k in range(len(cubicSym)):
-                    qasb = qas * cubicSym[k]
+                    qasb = qas * q2.conjugate() * cubicSym[k]
                     miso = max([miso, qasb, qasb.conjugate()])
 
         print t / float(n)
