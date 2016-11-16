@@ -17,16 +17,16 @@ reload(rus)
 N = 10
 
 ## Dimensions for TF-2
-X = 0.011959#0.007753
-Y = 0.013953#0.009057
-Z = 0.019976#0.013199
+X = 0.011#0.007753
+Y = 0.013#0.009057
+Z = 0.019#0.013199
 
 #Sample density
 density = 8700.0#4401.695921 #Ti-64-TF2
 
-c110 = 2.0
-anisotropic0 = 1.5
-c440 = 1.0
+c110 = 2.6
+anisotropic0 = 2.8421
+c440 = 1.35
 c120 = -(c440 * 2.0 / anisotropic0 - c110)
 
 # Standard deviation around each mode prediction
@@ -126,6 +126,14 @@ data = numpy.array([71.25925,
 258.23825,
 259.39025])
 
+data = numpy.array([  71.04149827,   82.74270332,   95.44792867,   99.16871298,
+        116.79412768,  121.52739404,  123.70569011,  137.16909551,
+        146.86716132,  149.21980347,  156.60206557,  163.68643926,
+        170.98528904,  175.59739109,  176.2592447 ,  185.9655138 ,
+        187.82188173,  189.33086255,  194.42119664,  197.07223083,
+        200.66774362,  206.21098658,  206.69925199,  211.46194875,
+        216.05725114,  217.84885983,  218.6616006 ,  223.55274233,
+        224.37361889,  227.74084719])
 #%%
 
 # These are the two HMC parameters
@@ -159,15 +167,15 @@ hmc = rus.HMC(N = N, # Order of Rayleigh-Ritz approximation
               density = density, X = X, Y = Y, Z = Z,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
-              parameters = { c11 : 2.46961, anisotropic : 2.85603, c44 : 1.30453, 'std' : 0.5 }, # Parameters
+              parameters = { c11 : 2.60, anisotropic : 2.8421, c44 : 1.35, 'std' : 5.0 }, # Parameters
               rotations = True,
-              T = 5.0)
+              T = 1.0)
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 hmc.sample(steps = 5, debug = True)
 #%%
-hmc.set_timestepping(epsilon = epsilon * 10, L = 75)
+hmc.set_timestepping(epsilon = epsilon * 10, L = 50)
 hmc.sample(debug = False)#True)#False)#True)
 #%%
 hmc.derivative_check()
@@ -318,7 +326,7 @@ for name, data1 in zip(*hmc.format_samples()):
     plt.show()
 #%%
 for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-200:]
+    data1 = data1[-400:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)
