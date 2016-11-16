@@ -21,7 +21,7 @@ q1 = quaternion.Quaternion(q)
 #q = [0.98849515554696088, -0.0026722254086214156, -0.015326741589590076, 0.15045024979640861]
 q = (0.988, 0.0, -0.01, 0.152)
 #q = [ 0.98805806, -0.00772966, -0.00900226, -0.15362448]#[0.98845476, -0.00572989, -0.0177229, -0.15036705]
-q = [0.928, -0.129, -0.315, -0.141]
+q = [0.874, -0.170, -0.033, 0.455]#[0.928, -0.129, -0.315, -0.141]
 q = q / numpy.linalg.norm(q)
 
 q2 = quaternion.Quaternion(q)
@@ -42,32 +42,33 @@ def adj(q):
     return q
 
 for i in range(len(cubicSym)):
-    for ii in range(len(orthoSym)):
-        qa = adj(cubicSym[i] * adj(orthoSym[ii] * q1))
+    qa = adj(cubicSym[i] * q1)
 
-        for j in range(len(cubicSym)):
-            for jj in range(len(orthoSym)):
-                qb = adj(cubicSym[j] * adj(orthoSym[jj] * q2))
+    for j in range(len(cubicSym)):
+        qb = adj(cubicSym[j] * q2)
 
-                qasb1 = adj(qa * qb.conjugate())
-                qasb2 = adj(qb * qa.conjugate())
+        qasb1 = adj(qa * qb.conjugate())
+        qasb2 = adj(qb * qa.conjugate())
 
-                t1 = qasb1.wxyz / numpy.linalg.norm(qasb1.wxyz)
-                t2 = qasb2.wxyz / numpy.linalg.norm(qasb2.wxyz)
+        t1 = qasb1.wxyz / numpy.linalg.norm(qasb1.wxyz)
+        t2 = qasb2.wxyz / numpy.linalg.norm(qasb2.wxyz)
 
-                a1 = 2 * numpy.arccos(t1[0]) * 180 / numpy.pi
-                a2 = 2 * numpy.arccos(t2[0]) * 180 / numpy.pi
+        a1 = 2 * numpy.arccos(t1[0]) * 180 / numpy.pi
+        a2 = 2 * numpy.arccos(t2[0]) * 180 / numpy.pi
 
                 #a1 = 2 * numpy.arccos(qasb1.wxyz[0]) * 180 / numpy.pi
                 #a2 = 2 * numpy.arccos(qasb2.wxyz[0]) * 180 / numpy.pi
 
-                if a1 < miso:
-                    miso = a1
-                    misoa = qasb1
+        if a1 < miso:
+            miso = a1
+            misoa = qasb1
+            print t1, t2
 
-                if a2 < miso:
-                    miso = a2
-                    misoa = qasb2
+        if a2 < miso:
+            miso = a2
+            misoa = qasb2
+            print 'b', t1, t2
+            1/0
             #miso = min(miso, )
         #miso = min(miso, 2 * numpy.arccos(qasb2.wxyz[0]) * 180 / numpy.pi)
         #2 * numpy.arccos(qasb2.wxyz[0]) * 180 / numpy.pi
@@ -158,8 +159,11 @@ get_misorientations([q1.wxyz], [q2.wxyz], 1)
 from rotations import quaternion
 from rotations import inv_rotations
 
-q1 = quaternion.Quaternion((0.981, 0.0, 0.0, -0.1908))
-q2 = quaternion.Quaternion((0.988, 0.0, -0.01, 0.152))
+#q1 = quaternion.Quaternion((0.981, 0.0, 0.0, -0.1908))
+#q2 = quaternion.Quaternion((0.988, 0.0, -0.01, 0.152))
+
+#q1 = quaternion.Quaternion([0.594756, -0.202874, 0.640152, 0.441943])
+#q2 = quaternion.Quaternion([0.874, -0.170, -0.033, 0.455])
 
 t1 = numpy.array(inv_rotations.qu2om(q1)).dot([1.0, 0.0, 0.0])
 t2 = numpy.linalg.solve(inv_rotations.qu2om(q2), [1.0, 0.0, 0.0])
