@@ -134,6 +134,20 @@ data = numpy.array([  71.04149827,   82.74270332,   95.44792867,   99.16871298,
         200.66774362,  206.21098658,  206.69925199,  211.46194875,
         216.05725114,  217.84885983,  218.6616006 ,  223.55274233,
         224.37361889,  227.74084719])
+
+data = numpy.array([  71.34475997,   83.2037272 ,   95.40214985,   98.63658633,
+        116.40953843,  122.360584  ,  124.1779111 ,  137.43584155,
+        147.47787637,  148.33982201,  156.24608537,  163.96310176,
+        170.84722907,  174.9822489 ,  176.97880246,  184.83976724,
+        187.6256789 ,  189.29388232,  193.65323046,  196.86083234,
+        200.15465607,  206.06214318,  206.77248337,  211.74757895,
+        215.51194915,  217.72926924,  218.69359608,  223.92339479,
+        224.68479063,  227.26967728,  229.25123788,  232.17777193,
+        235.96741787,  237.49517768,  245.38754132,  249.38440435,
+        251.50489501,  254.52515981,  255.56275932,  257.01470896,
+        266.3375151 ,  266.52476803,  269.55263391,  270.52162718,
+        272.66840067,  274.63510623,  275.27717333,  277.91917222,
+        281.6654003 ,  286.38803225])
 #%%
 
 # These are the two HMC parameters
@@ -175,7 +189,7 @@ hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 hmc.sample(steps = 5, debug = True)
 #%%
-hmc.set_timestepping(epsilon = epsilon * 10, L = 50)
+hmc.set_timestepping(epsilon = epsilon * 5, L = 50)
 hmc.sample(debug = False)#True)#False)#True)
 #%%
 hmc.derivative_check()
@@ -326,7 +340,7 @@ for name, data1 in zip(*hmc.format_samples()):
     plt.show()
 #%%
 for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-400:]
+    data1 = data1[-200:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)
