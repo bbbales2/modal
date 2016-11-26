@@ -9,6 +9,7 @@ import numbers
 import seaborn
 import pandas
 import matplotlib.pyplot as plt
+import bisect
 #%%
 import time
 #%%
@@ -24,7 +25,7 @@ def printoptions(*args, **kwargs):
     numpy.set_printoptions(**original)
 
 class HMC():
-    def __init__(self, N, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None, rotations = None, T = 1.0):
+    def __init__(self, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None, rotations = None, T = 1.0, tol = 1e-3, maxN = 12, N = None):
         self.C = stiffness_matrix
         self.dC = {}
         self.density = density
@@ -35,6 +36,10 @@ class HMC():
         self.order = {}
         self.initial_conditions = parameters
         self.labels = {}
+        self.maxN = maxN
+
+        if N is not None:
+            print "WARNING: Parameter 'N' to HMC.__init__ is defunct. It is ignored in favor of maxN"
 
         if isinstance(resonance_modes[0], numbers.Number):
             resonance_modes = [resonance_modes]
@@ -76,9 +81,14 @@ class HMC():
             if p != 'std':
                 self.dC[p] = self.C.diff(p)
 
-        self.dp, self.pv, _, _, _, _, _, _ = polybasisqu.build(N, X, Y, Z)
-
         self.reset(self.initial_conditions)
+
+        self.dps = {}
+        self.pvs = {}
+
+        self.compute_resolutions(tol) # This will fill up self.dps and self.pvs
+
+        self.set_resolution()
 
     def reset(self, initial_conditions = None):
         if initial_conditions == None:
@@ -104,6 +114,84 @@ class HMC():
             self.current_q[i] = numpy.log(initial_conditions[p]) if p in self.constrained_positive else initial_conditions[p]
 
         self.accepts.append(self.current_q)
+
+    # Building a lookup that returns, given a number of modes, the order of the polynomials N in the Rayleigh Ritz expansion
+    def compute_resolutions(self, tol):
+        modes = {}
+
+        Ns = range(8, self.maxN + 4, 2)
+
+        for N in Ns:
+            qdict = self.qdict(self.current_q)
+            qr = self.current_qr
+
+            perNModes = []
+
+            for p in qdict:
+                qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
+
+            for r in range(max(self.R, 1)):
+                C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
+
+                if self.rotations:
+                    w, x, y, z = qr[self.rotations[r]]
+
+                    C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
+
+                dp, pv, _, _, _, _, _, _ = polybasisqu.build(N, self.X, self.Y, self.Z)
+
+                self.dps[N] = dp
+                self.pvs[N] = pv
+
+                K, M = polybasisqu.buildKM(C, dp, pv, self.density)
+
+                eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
+
+                freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+
+                perNModes.append(freqs)
+
+            modes[N] = numpy.array(perNModes)
+
+        resolutions = []
+        Nvs = []
+
+        for N in Ns[:-1]:
+            lt = numpy.where(numpy.max(numpy.abs((modes[N] - modes[Ns[-1]]) / modes[Ns[-1]]), axis = 0) > tol)[0]
+
+            if len(lt) != 0:
+                if lt[0] not in resolutions and lt[0] > 0:
+                    print N
+                    resolutions.append(lt[0] - 1)
+                    Nvs.append(N)
+
+        supremumN = min(set(Ns) - set(range(max(Nvs) + 1)))
+
+        self.resolutions = {}
+        for m in range(max(self.modes) + 1):
+            i = bisect.bisect_left(resolutions, m)
+
+            if i < len(Nvs):
+                self.resolutions[m] = Nvs[i]
+            else:
+                self.resolutions[m] = supremumN
+
+        return self.resolutions
+
+    def set_resolution(self, number_of_modes = -1):
+
+        if number_of_modes == -1:
+            N = self.resolutions[max(self.modes)]
+            self.resolution = max(self.modes)
+        else:
+            N = self.resolutions[number_of_modes]
+
+            self.dp = self.dps[N]
+            self.pv = self.pvs[N]
+
+            self.resolution = number_of_modes
+
+        return N
 
     def qdict(self, q):
         result = {}
@@ -154,14 +242,14 @@ class HMC():
                 # Likelihood p(data | params)
                 K, M = polybasisqu.buildKM(Cr, self.dp, self.pv, self.density)
 
-                eigs, evecs[r] = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
+                eigs, evecs[r] = scipy.linalg.eigh(K, M, eigvals = (6, 6 + self.resolution - 1))#max(self.modes)
 
                 freqs[r] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
                 dfreqsdl[r] = 0.5e11 / (numpy.sqrt(eigs * 1e11) * numpy.pi * 2000)
         else:
             K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
 
-            eigs, evecs[0] = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
+            eigs, evecs[0] = scipy.linalg.eigh(K, M, eigvals = (6, 6 + self.resolution - 1))#max(self.modes)
 
             freqs[0] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
             dfreqsdl[0] = 0.5e11 / (numpy.sqrt(eigs * 1e11) * numpy.pi * 2000)
@@ -198,11 +286,11 @@ class HMC():
             else:
                 r = 0
 
-            dlpdfreqs = numpy.zeros(len(self.data[s]))
+            dlpdfreqs = numpy.zeros(min(self.resolution, self.modes[s]))
             dlpdstd = 0.0
             logp = 0.0
 
-            for i in range(self.modes[s]):
+            for i in range(min(self.resolution, self.modes[s])):
                 dlpdfreqs[i] = (self.data[s][i] - freqs[r][i]) / (std ** 2)
                 dlpdstd += ((-(std ** 2) + (self.data[s][i] - freqs[r][i]) ** 2) / (std ** 3))
                 logp += (0.5 * (-((self.data[s][i] - freqs[r][i]) **2 / (std**2)) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))

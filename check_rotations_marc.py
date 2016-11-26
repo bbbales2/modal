@@ -15,7 +15,7 @@ q = (0.981, 0.0, 0.0, -0.1908)
 #q = [ 0.98805806, -0.00772966, -0.00900226, -0.15362448]#[0.98845476, -0.00572989, -0.0177229, -0.15036705]
 q = [0.594756, -0.202874, 0.640152, 0.441943]
 #q = [0.874, -0.170, -0.033, 0.455]
-q = [0.87095, 0.17028, 0.03090, 0.45989]
+#q = [0.87095, 0.17028, 0.03090, 0.45989]
 #q = [0.939, -0.097, 0.144, 0.296]
 #q = [ 0.93748, 0.10560, -0.13237, 0.30406 ] # 30 take 2
 q = q / numpy.linalg.norm(q)
@@ -26,31 +26,14 @@ q1 = quaternion.Quaternion(q)
 q = (0.988, 0.0, -0.01, 0.152)
 #q = [ 0.98805806, -0.00772966, -0.00900226, -0.15362448]#[0.98845476, -0.00572989, -0.0177229, -0.15036705]
 #
+q = [0.873, -0.034, 0.168, 0.456]
 #q = [0.94295, 0.09604, -0.14072, 0.28605]
-q = [0.93894, -0.09845, -0.14279, -0.29717] # 30
+#q = [0.93894, -0.09845, -0.14279, -0.29717] # 30
+q = [0.940, 0.141, -0.102, -0.294]
 q = q / numpy.linalg.norm(q)
 
 q2 = quaternion.Quaternion(q)
 
-ops = []
-for cub in cubicSym:
-    for orth in orthoSym:
-        ops.append(cub * orth)
-
-def disoQuat(q1, q2, quOperators):
-    deltaQ = q1 * q2.conjugate()
-    equivMiso = [q * j.conjugate() for q, j in itertools.product([i * deltaQ for i in quOperators], quOperators)] # compute all equivilent misorientation representations
-
-    angs = []
-    for miso in equivMiso:
-        angs.append(numpy.arccos(miso.wxyz[0]) * 2 * 180 / numpy.pi)
-
-    return equivMiso[numpy.argsort(angs)[0]]
-
-    #return max(max(equivMiso), max([q.conjugate() for q in equivMiso])) # select quaternion of smallest rotation with axis in most positive quadrant from equivilent rotations w/ switching symmetry
-
-print disoQuat(q1, q2, ops)
-#%%
 cubicSym = symmetry.Symmetry.Cubic.quOperators()
 orthoSym = symmetry.Symmetry.Orthorhombic.quOperators()
 
@@ -75,11 +58,11 @@ def adj(q):
 
 for i in range(len(cubicSym)):
     for ii in range(len(orthoSym)):
-        qa = cubicSym[i] * orthoSym[ii] * q1
+        qa = adj(orthoSym[ii] * q1 * cubicSym[i])
 
         for j in range(len(cubicSym)):
             for jj in range(len(orthoSym)):
-                qb = q2 * cubicSym[j] * orthoSym[jj]
+                qb = adj(orthoSym[jj] * q2 * cubicSym[j])
 
                 qasb1 = adj(qa * qb.conjugate())
                 qasb2 = adj(qb * qa.conjugate())
@@ -90,8 +73,8 @@ for i in range(len(cubicSym)):
                 a1 = 2 * numpy.arccos(t1[0]) * 180 / numpy.pi
                 a2 = 2 * numpy.arccos(t2[0]) * 180 / numpy.pi
 
-                        #a1 = 2 * numpy.arccos(qasb1.wxyz[0]) * 180 / numpy.pi
-                        #a2 = 2 * numpy.arccos(qasb2.wxyz[0]) * 180 / numpy.pi
+                #a1 = 2 * numpy.arccos(qasb1.wxyz[0]) * 180 / numpy.pi
+                #a2 = 2 * numpy.arccos(qasb2.wxyz[0]) * 180 / numpy.pi
 
                 if a1 < miso:
                     miso = a1
