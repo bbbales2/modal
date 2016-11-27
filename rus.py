@@ -165,7 +165,6 @@ class HMC():
 
             if len(lt) != 0:
                 if lt[0] not in resolutions and lt[0] > 0:
-                    print N
                     resolutions.append(lt[0] - 1)
                     Nvs.append(N)
 
@@ -186,6 +185,10 @@ class HMC():
 
         if number_of_modes == -1:
             N = self.resolutions[max(self.modes)]
+
+            self.dp = self.dps[N]
+            self.pv = self.pvs[N]
+
             self.resolution = max(self.modes)
         else:
             N = self.resolutions[number_of_modes]
@@ -295,7 +298,6 @@ class HMC():
             logp = 0.0
 
             for i in range(min(self.resolution, self.modes[s])):
-                print i
                 dlpdfreqs[i] = (self.data[s][i] - freqs[r][i]) / (std ** 2)
                 dlpdstd += ((-(std ** 2) + (self.data[s][i] - freqs[r][i]) ** 2) / (std ** 3))
                 logp += (0.5 * (-((self.data[s][i] - freqs[r][i]) **2 / (std**2)) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
@@ -437,14 +439,14 @@ class HMC():
             # the position at the end of the trajectory or the initial position
             dQ = current_U - proposed_U + current_K - proposed_K
 
-            self.logps.append(UC)
-
             with printoptions(precision = 5):
                 if numpy.random.rand() < min(1.0, numpy.exp(dQ)):
                     self.current_q = q # accept
                     self.current_qr = qr
 
                     self.accepts.append(len(self.qs) - 1)
+
+                    self.logps.append(U)
 
                     if not silent or debug:
                         print "Accepted ({0} accepts so far):".format(len(self.accepts))
@@ -453,6 +455,8 @@ class HMC():
                     if not silent or debug:
                         print "Rejected: "
                         print self.print_q(self.current_q, self.current_qr)
+
+                    self.logps.append(UC)
 
                 self.qs.append(self.current_q.copy())
                 self.qrs.append(self.current_qr.copy())
