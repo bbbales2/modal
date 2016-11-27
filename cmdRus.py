@@ -5,6 +5,7 @@ import numpy
 import sympy
 import os
 import pickle
+import time
 from mpi4py import MPI
 
 import rus
@@ -27,6 +28,8 @@ parser.add_argument('-L', type = int, default = 50, help = 'Number of ODE timest
 parser.add_argument('--debug', help = "Print debug information", action = 'store_true')
 parser.add_argument('--rotations', help = "Estimate orientation parameters", action = 'store_true')
 parser.add_argument('--maxT', type = float, default = 1.5, help = "Maximum parallel tempering temperature")
+parser.add_argument('--swap_prob', type = float, default = 0.1, help = "Probability of doing swap step instead of sampling")
+parser.add_argument('--checkpoint', type = int, default = 10, help = "Number of iterations between checkpoint")
 parser.add_argument('--progress_folder', type = str, help = 'Folder to save progress in')
 parser.add_argument('--output_file', type = str, help = 'File to save output in. Unlike the progress file this will be completely re-written each execution')
 parser.add_argument('initial', type = float, nargs = 4, help = """Initial parameter guesses, 'c11 anisotropic_ratio c44 std' for cubic, ex: 2.0 1.0 1.0 5.0""")
@@ -34,6 +37,7 @@ parser.add_argument('initial', type = float, nargs = 4, help = """Initial parame
 args = parser.parse_args()
 
 Ts = numpy.linspace(1.0, args.maxT, size)
+swap_prob = args.swap_prob
 
 data = numpy.loadtxt(args.mode_file)
 
@@ -73,13 +77,16 @@ def checkpoint():
     comm.barrier()
 
 def sample(steps = 1):
+    tmp = time.time()
     #hmc.set_timestepping(epsilon = args.epsilon, L = args.L)
 
     hmc.sample(steps = steps, debug = args.debug, silent = True)
 
     print_output(1)
 
+    print "Checkpoint (to barrier): ", time.time() - tmp
     comm.barrier()
+    print "Checkpoint took: ", time.time() - tmp
 
 def print_header():
     labels, values = hmc.format_samples(-1)
@@ -162,8 +169,18 @@ else:
     
 checkpoint()
 
+loops = 0
 while 1:
-    if numpy.random.rand() < 0.5:
+    comm.barrier()
+
+    if rank == 0:
+        r = numpy.random.rand()
+    else:
+        r = 0
+
+    r = comm.bcast(r, root = 0)
+
+    if r < 1.0 - swap_prob:
         sample()
     else:
         if rank == 0:
@@ -190,7 +207,6 @@ while 1:
 
             ps = min(1.0, numpy.exp(-logpi_p - logpip_p + logpi + logpip))
             
-            #print "Swapping {0} and {1} with probability {2}".format(i, i + 1, ps)
             #print "logpi", logpi
             #print "logpip", logpip
             #print "logpi_p", logpi_p
@@ -203,40 +219,59 @@ while 1:
                 swapem = False
                 #print "Noswap"
 
+            print "Debug: Swapping {0} and {1} with probability {2} (result: {3})".format(i, i + 1, ps, swapem)
             #print ""
 
         swapem = comm.bcast(swapem, root = 0)
 
-        if swapem:
+        if swapem and rank in [i, i + 1]:
             if rank == i:
                 comm.Send(hmc.current_q, dest = i + 1)
                 comm.Send(hmc.current_qr.flatten(), dest = i + 1)
+                comm.send(hmc.logps[-1], dest = i + 1)
+                comm.send(hmc.accepts[-1], dest = i + 1)
                 #print "Send from ", i
             elif rank == i + 1:
                 oq = numpy.zeros(hmc.current_q.shape)
                 oqr = numpy.zeros(hmc.current_qr.flatten().shape)
                 comm.Recv(oq, source = i)
                 comm.Recv(oqr, source = i)
+                logp = comm.recv(source = i)
+                accept = comm.recv(source = i)
                 #print oq
                 #print "Receive on ", i + 1
 
             if rank == i + 1:
                 comm.Send(hmc.current_q, dest = i)
                 comm.Send(hmc.current_qr.flatten(), dest = i)
+                comm.send(hmc.logps[-1], dest = i)
+                comm.send(hmc.accepts[-1], dest = i)
                 #print "Send from ", i + 1
             elif rank == i:
                 oq = numpy.zeros(hmc.current_q.shape)
                 oqr = numpy.zeros(hmc.current_qr.flatten().shape)
                 comm.Recv(oq, source = i + 1)
                 comm.Recv(oqr, source = i + 1)
+                logp = comm.recv(source = i + 1)
+                accept = comm.recv(source = i + 1)
                 #print "Receive on ", i
 
             hmc.current_q = oq
             hmc.current_qr = oqr.reshape(hmc.current_qr.shape)
+
+            if rank == i:
+                hmc.logps[-1] = logp * Ts[i + 1] / Ts[i]
+            elif rank == i + 1:
+                hmc.logps[-1] = logp * Ts[i] / Ts[i + 1]
+
+            hmc.accepts[-1] = accept
 
         #if rank == 0:
         #    print "Done swapping"
         #comm.barrier()
         #print_output(1)
 
-    checkpoint()
+    loops += 1
+
+    if loops % args.checkpoint == 0:
+        checkpoint()
