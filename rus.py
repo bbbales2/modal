@@ -4,7 +4,7 @@ import numpy
 import pyximport
 pyximport.install()#reload_support = True)
 import polybasisqu
-import scipy
+import scipy.linalg
 import numbers
 try:
     import matplotlib.pyplot as plt
