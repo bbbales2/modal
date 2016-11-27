@@ -6,9 +6,13 @@ pyximport.install()#reload_support = True)
 import polybasisqu
 import scipy
 import numbers
-import seaborn
-import pandas
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+    matplotlib_available = True
+except:
+    print "import matplotlib.pyplot as plt failed. No plotting available through rus library"
+    matplotlib_available = False
+
 import bisect
 #%%
 import time
@@ -554,7 +558,7 @@ class HMC():
             ppl = numpy.percentile(posterior_predictive[:, :, r], 2.5, axis = 1)
             ppr = numpy.percentile(posterior_predictive[:, :, r], 97.5, axis = 1)
 
-            if plot:
+            if plot and matplotlib_available:
                 data = []
 
                 for l in range(len(self.data[s])):
@@ -563,11 +567,7 @@ class HMC():
                         tmp.append(posterior_predictive[l, ln, r] - self.data[s][l])
 
                     data.append(tmp)
-                    #data.append([l, self.data[s][l], 'Measured'])
 
-                #df = pandas.DataFrame(data, columns = ['Modes', 'Frequency', 'Type'])
-
-                #seaborn.boxplot(x = 'Modes', y = 'Frequency', data = df)
                 data = numpy.array(data)
                 plt.boxplot(numpy.array(data).transpose())
 

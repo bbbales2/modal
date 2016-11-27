@@ -14,13 +14,13 @@ rank = comm.Get_rank()
 
 parser = argparse.ArgumentParser(description = 'Do resonance ultrasound spectroscopy inversion!')
 
-parser.add_argument('N', type = int, help = 'Order of Rayleigh-Ritz approximation')
 parser.add_argument('density', type = float, help = 'Density of material (kg/m^3)')
 parser.add_argument('X', type = float, help = 'X dimension of sample (m)')
 parser.add_argument('Y', type = float, help = 'Y dimension of sample (m)')
 parser.add_argument('Z', type = float, help = 'Z dimension of sample (m)')
 #parser.add_argument('symmetry', choices = ['cubic'], default = 'cubic')
 parser.add_argument('mode_file', type = str, help = 'File containing measured resonance modes one per line in khz')
+parser.add_argument('--tol', type = float, default = 1e-3, help = 'Relative accuracy of Rayleigh-Ritz approximation')
 parser.add_argument('--epsilon', type = float, default = 0.0001, help = 'Timestep of ODE integrator in Hamiltonian Monte Carlo solver')
 parser.add_argument('-L', type = int, default = 50, help = 'Number of ODE timesteps in each HMC step')
 parser.add_argument('--debug', help = "Print debug information", action = 'store_true')
@@ -120,7 +120,7 @@ else:
                       [0, 0, 0, 0, c44, 0],
                       [0, 0, 0, 0, 0, c44]])
 
-    hmc = rus.HMC(N = args.N, # Order of Rayleigh-Ritz approximation
+    hmc = rus.HMC(tol = args.tol, # Accuracy of Rayleigh-Ritz approximation
                   density = args.density, X = args.X, Y = args.Y, Z = args.Z,
                   resonance_modes = data, # List of resonance modes
                   stiffness_matrix = C, # Stiffness matrix
