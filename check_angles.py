@@ -38,6 +38,8 @@ g2 = qs[-2000:, 4:][C == 1]
 from rotations import symmetry
 from rotations import quaternion
 
+cubicSym = symmetry.Symmetry.Cubic.quOperators()
+
 def get_misorientations(g1, g2, n):
     angles = []
 
@@ -50,40 +52,75 @@ def get_misorientations(g1, g2, n):
     idxs2 = idxs[0 : n]
 
     for t, (ii, jj) in enumerate(zip(idxs1, idxs2)):
-        q1 = quaternion.Quaternion(g1[ii])
-        q2 = quaternion.Quaternion(g2[jj])
+        gg1 = g1[ii]
+        gg2 = g2[jj]
 
-        deltaQ = q1 * q2.conjugate()
+        q1 = quaternion.Quaternion(gg1 / numpy.linalg.norm(gg1))
+        q2 = quaternion.Quaternion(gg2 / numpy.linalg.norm(gg2))
 
-        cubicSym = symmetry.Symmetry.Cubic.quOperators()
-        orthoSym = symmetry.Symmetry.Orthorhombic.quOperators()
-        miso = deltaQ
+        miso = 180.0
+        misoa = None
+
+        def adj(q):
+            if q.wxyz[0] < 0.0:
+                q.wxyz[0] *= -1
+                q.wxyz[1] *= -1
+                q.wxyz[2] *= -1
+                q.wxyz[3] *= -1
+
+            return q
+
         for i in range(len(cubicSym)):
-            qa = cubicSym[i] * q1
-            for j in range(len(orthoSym)):
-                qas = qa * orthoSym[j]
-                for k in range(len(cubicSym)):
-                    qasb = qas * q2.conjugate() * cubicSym[k]
-                    miso = max([miso, qasb, qasb.conjugate()])
+            qa = adj(cubicSym[i] * q1)
+
+            for k in range(len(cubicSym)):
+                qb = adj(cubicSym[k] * q2)
+
+                qasb1 = adj(qa * qb.conjugate())
+                qasb2 = adj(qb * qa.conjugate())
+
+                t1 = qasb1.wxyz / numpy.linalg.norm(qasb1.wxyz)
+                t2 = qasb2.wxyz / numpy.linalg.norm(qasb2.wxyz)
+                #print qasb1
+                #print qasb2
+                #1/0
+                a1 = 2 * numpy.arccos(t1[0]) * 180 / numpy.pi
+                a2 = 2 * numpy.arccos(t2[0]) * 180 / numpy.pi
+
+                if a1 < miso:
+                    #print qasb1
+                    #print qasb2
+                    miso = a1
+                    misoa = qasb1
+
+                if a2 < miso:
+                    #print qasb1
+                    #print qasb2
+                    miso = a2
+                    #print 'hi2', a2, miso
+                    misoa = qasb2
+                    #print 'hi', a1, miso
+
+                #print 'miso', q1, q2, miso
 
         print t / float(n)
 
-        #print miso[0]
+        #if miso > 50.0:
+        #    print q1, q2, miso, t, ii, jj
+        #    1/0
 
-        angle = 2 * numpy.arccos(miso.wxyz[0]) * 180 / numpy.pi
-
-        angle = 0 if numpy.isnan(angle) else angle
-
-        angles.append(angle)
+        angles.append(miso)
 
     # to move q2 back to q1, use all the i, j, k rotations.... Not just miso
     return angles
-
-angles11 = get_misorientations(g1, g1, 250)
+#%%
+angles11 = get_misorientations([g1[14]], [g1[14]], 1000)
+#%%
+angles11 = get_misorientations(g1, g1, 1000)
 print '----'
-angles12 = get_misorientations(g1, g2, 250)
+angles12 = get_misorientations(g1, g2, 1000)
 print '----'
-angles22 = get_misorientations(g2, g2, 250)
+angles22 = get_misorientations(g2, g2, 1000)
 #%%
 symmetry.Symmetry.Orthorhombic.quInFZ(quaternion.Quaternion(g1[0]))
 #%%

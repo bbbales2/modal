@@ -16,7 +16,7 @@ reload(polybasisqu)
 #from rotations import inv_rotations
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 10
+N = 12
 
 density = 8700.0  #4401.695921#
 
@@ -138,7 +138,7 @@ logps = []
 accepts = []
 
 current_q = numpy.array([c11, anisotropic, c44, std, w, x, y, z])
-current_q = [.243914164e+00, 2.87679060e+00, .131354678e+00, 6.10899449e-02, 9.88260173e-01, 3.40517820e-05, -1.15781363e-02, -1.52190782e-01]
+#current_q = [.243914164e+00, 2.87679060e+00, .131354678e+00, 6.10899449e-02, 9.88260173e-01, 3.40517820e-05, -1.15781363e-02, -1.52190782e-01]
 
 #%%
 # These are the two HMC parameters
@@ -207,6 +207,7 @@ def UgradU(q):
     dKdc44, _ = polybasisqu.buildKM(dCdc44, dp, pv, density)
 
     K, M = polybasisqu.buildKM(C, dp, pv, density)
+    print K.shape
     #print 'Assemble: ', time.time() - tmp
 
     #tmp = time.time()
