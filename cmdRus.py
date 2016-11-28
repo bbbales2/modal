@@ -77,16 +77,13 @@ def checkpoint():
     comm.barrier()
 
 def sample(steps = 1):
-    tmp = time.time()
     #hmc.set_timestepping(epsilon = args.epsilon, L = args.L)
 
     hmc.sample(steps = steps, debug = args.debug, silent = True)
 
     print_output(1)
 
-    print "Checkpoint (to barrier): ", time.time() - tmp
     comm.barrier()
-    print "Checkpoint took: ", time.time() - tmp
 
 def print_header():
     labels, values = hmc.format_samples(-1)
