@@ -4,8 +4,8 @@ cimport numpy
 import numpy
 import time
 
-cpdef inline float polyint(int n, int m, int l):
-    cdef float xtmp, ytmp
+cpdef inline double polyint(int n, int m, int l):
+    cdef double xtmp, ytmp
 
     if n < 0 or m < 0 or l < 0 or n % 2 > 0 or m % 2 > 0 or l % 2 > 0:
         return 0.0
@@ -14,11 +14,11 @@ cpdef inline float polyint(int n, int m, int l):
     ytmp = 2 * 0.5**(m + 1) * xtmp
     return 2 * 0.5**(l + 1) * ytmp / ((n + 1) * (m + 1) * (l + 1))
 
-cpdef build(int N, float X, float Y, float Z):
-    cdef numpy.ndarray[numpy.float_t, ndim = 4] dp, ddpdX, ddpdY, ddpdZ
-    cdef numpy.ndarray[numpy.float_t, ndim = 2] pv, dpvdX, dpvdY, dpvdZ
+cpdef build(int N, double X, double Y, double Z):
+    cdef numpy.ndarray[numpy.double_t, ndim = 4] dp, ddpdX, ddpdY, ddpdZ
+    cdef numpy.ndarray[numpy.double_t, ndim = 2] pv, dpvdX, dpvdY, dpvdZ
     cdef numpy.ndarray[numpy.int_t, ndim = 2] basis
-    cdef numpy.ndarray[numpy.float_t, ndim = 1] Xs, Ys, Zs
+    cdef numpy.ndarray[numpy.double_t, ndim = 1] Xs, Ys, Zs
 
     cdef int i, j, k, basisLength, n0, m0, n1, m1, l0, l1
 
@@ -237,8 +237,8 @@ cpdef buildRot2(C, w, x, y, z):
 
     return Crot, dCrotdw, dCrotdx, dCrotdy, dCrotdz, Q
 
-cpdef inline numpy.ndarray[numpy.float_t, ndim = 4] Cvoigt(numpy.ndarray[numpy.float_t, ndim = 2] Ch):
-    cdef numpy.ndarray[numpy.float_t, ndim = 4] C
+cpdef inline numpy.ndarray[numpy.double_t, ndim = 4] Cvoigt(numpy.ndarray[numpy.double_t, ndim = 2] Ch):
+    cdef numpy.ndarray[numpy.double_t, ndim = 4] C
     cdef int i, j, k, l, n, m
 
     C = numpy.zeros((3, 3, 3, 3))
@@ -252,10 +252,10 @@ cpdef inline numpy.ndarray[numpy.float_t, ndim = 4] Cvoigt(numpy.ndarray[numpy.f
                     C[k, l, n, m] = Ch[i, j]
     return C
 
-cpdef buildKM(numpy.ndarray[numpy.float_t, ndim = 2] Ch, numpy.ndarray[numpy.float_t, ndim = 4] dp, numpy.ndarray[numpy.float_t, ndim = 2] pv, float density):
-    cdef numpy.ndarray[numpy.float_t, ndim = 6] dpe
-    cdef numpy.ndarray[numpy.float_t, ndim = 4] C, Kt, Mt
-    cdef numpy.ndarray[numpy.float_t, ndim = 2] K, M
+cpdef buildKM(numpy.ndarray[numpy.double_t, ndim = 2] Ch, numpy.ndarray[numpy.double_t, ndim = 4] dp, numpy.ndarray[numpy.double_t, ndim = 2] pv, double density):
+    cdef numpy.ndarray[numpy.double_t, ndim = 6] dpe
+    cdef numpy.ndarray[numpy.double_t, ndim = 4] C, Kt, Mt
+    cdef numpy.ndarray[numpy.double_t, ndim = 2] K, M
     cdef int i, j, k, l, n, m, N
 
     N = dp.shape[0]

@@ -490,8 +490,8 @@ class HMC():
                 #for ll, meas, rr, tick in zip(ppl, self.data[s], ppr, range(len(self.data[s]))):
                 #    ax1.text(tick + 1, ax1.get_ylim()[1] * 0.90, '{0:10.{3}f} {1:10.{3}f} {2:10.{3}f}'.format(ll, meas, rr, precision),
                 #             horizontalalignment='center', rotation=45, size='x-small')
-                plt.xlabel('Mode')
-                plt.ylabel('Computed - Measured (khz)')
+                plt.xlabel('Mode Number', fontsize=18)
+                plt.ylabel('Computed - Measured (khz)', fontsize=18)
             else:
                 print "For dataset {0}".format(s)
                 print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
