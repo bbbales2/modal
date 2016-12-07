@@ -168,7 +168,10 @@ class HMC():
                     resolutions.append(lt[0] - 1)
                     Nvs.append(N)
 
-        supremumN = min(set(Ns) - set(range(max(Nvs) + 1)))
+        if len(Nvs) > 0:
+            supremumN = min(set(Ns) - set(range(max(Nvs) + 1)))
+        else:
+            supremumN = Ns[0]
 
         self.resolutions = {}
         for m in range(max(self.modes) + 1):

@@ -70,7 +70,8 @@ C = sympy.Matrix([[c11, c12, c12, 0, 0, 0],
                   [0, 0, 0, 0, c44, 0],
                   [0, 0, 0, 0, 0, c44]])
 
-hmc = rus.HMC(density = density, X = X, Y = Y, Z = Z,
+hmc = rus.HMC(tol = 1e-3,
+              density = density, X = X, Y = Y, Z = Z,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
               parameters = { c11 : c110, anisotropic : anisotropic0, c44 : c440, 'std' : std0 }, # Parameters
@@ -95,11 +96,57 @@ for name, data1 in zip(*hmc.format_samples()):
     plt.plot(data1)
     plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
     plt.tick_params(axis='y', which='major', labelsize=16)
+    plt.tick_params(axis='x', which='major', labelsize=16)
+    fig = plt.gcf()
+    fig.set_size_inches((10, 6))
     plt.show()
 #%%
 for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-10000:]
+    data1 = data1[-14000:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)
+    fig = plt.gcf()
+    fig.set_size_inches((10, 6))
     plt.show()
+
+#%%
+hmc.posterior_predictive(plot = True, lastN = 200)
+plt.title('Posterior predictive', fontsize = 72)
+plt.xlabel('Mode', fontsize = 48)
+plt.ylabel('Computed - Measured (khz)', fontsize = 48)
+plt.tick_params(axis='y', which='major', labelsize=48)
+plt.tick_params(axis='x', which='major', labelsize=48)
+fig = plt.gcf()
+fig.set_size_inches((24, 16))
+plt.savefig('dec2/cmsxlow/posteriorpredictive.png', dpi = 144)
+plt.show()
+#%%
+
+
+import sklearn.mixture
+import pickle
+
+with open('friday_demo_hires.pkl', 'w') as f:
+    pickle.dump(hmc.format_samples(), f)
+
+#%%
+labels, values = hmc.format_samples()
+
+qs = numpy.array([q for q in zip(*values[0:4]) if q[0] < 4.0])
+
+#%%
+
+seaborn.distplot(qs[:, 3], kde = False, bins = 50)
+#%%
+
+hmc.posterior_predictive(200)
+#%%
+
+gmm = sklearn.mixture.GMM(2)
+
+gmm.fit(qs[:, :1])
+
+print gmm.weights_
+print gmm.means_
+print gmm.covars_
