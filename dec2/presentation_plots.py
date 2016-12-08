@@ -15,8 +15,13 @@ with open('dec2/friday_demo_hires.pkl') as f:
     hlabels, hvalues = pickle.load(f)
 
 with open('dec2/andrew_cubic.pkl') as f:
-    hmc = pickle.load(f)
-    alabels, avalues = hmc.format_samples()
+    hmcc = pickle.load(f)
+    aclabels, acvalues = hmcc.format_samples()
+
+with open('dec2/andrew_hexagonal.pkl') as f:
+    hmcf = pickle.load(f)
+    ahlabels, ahvalues = hmcf.format_samples()
+
 
 #%%
 import scipy.stats
@@ -47,7 +52,7 @@ for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
 for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
     data1 = data1[-14000:]
     data2 = data2[-1000:]
-    seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
+    seaborn.distplot(data1, kde = False, fit = scipy.stats.norm, color = "grey")
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name1, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='y', which='major', labelsize=24)
     plt.tick_params(axis='x', which='major', labelsize=24)
@@ -59,7 +64,7 @@ for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
 for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
     data1 = data1[-14000:]
     data2 = data2[-1000:]
-    seaborn.distplot(data2, kde = False, fit = scipy.stats.norm)
+    seaborn.distplot(data2, kde = False, fit = scipy.stats.norm, color = "grey")
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name2, numpy.mean(data2), numpy.std(data2)), fontsize = 36)
     plt.tick_params(axis='y', which='major', labelsize=24)
     plt.tick_params(axis='x', which='major', labelsize=24)
@@ -70,7 +75,7 @@ for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
 
 #%%
 
-for name, data in zip(alabels, avalues):
+for name, data in zip(aclabels, acvalues):
     plt.plot(data)
     plt.title('{0}'.format(name), fontsize = 36, color = "grey")
     plt.tick_params(axis='y', which='major', labelsize=24)
@@ -80,8 +85,8 @@ for name, data in zip(alabels, avalues):
     plt.savefig('dec2/andrewcubic/{0}t.png'.format(name), dpi = 144)
     plt.show()
 
-for name, data in zip(alabels, avalues):
-    data = data[-14000:]
+for name, data in zip(aclabels, acvalues):
+    data = data[-2000:]
     seaborn.distplot(data, kde = False, fit = scipy.stats.norm, color = "grey")
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data), numpy.std(data)), fontsize = 36)
     plt.tick_params(axis='y', which='major', labelsize=24)
@@ -90,6 +95,50 @@ for name, data in zip(alabels, avalues):
     fig.set_size_inches((10, 6.6667))
     plt.savefig('dec2/andrewcubic/{0}d.png'.format(name), dpi = 144)
     plt.show()
+    #%%
+hmcc.posterior_predictive(plot = True, lastN = 200)
+plt.title('Posterior predictive', fontsize = 72)
+plt.xlabel('Mode', fontsize = 48)
+plt.ylabel('Computed - Measured (khz)', fontsize = 48)
+plt.tick_params(axis='y', which='major', labelsize=48)
+plt.tick_params(axis='x', which='major', labelsize=16)
+fig = plt.gcf()
+fig.set_size_inches((24, 16))
+plt.savefig('dec2/andrewcubic/posteriorpredictive.png', dpi = 144)
+plt.show()
+#%%
+
+for name, data in zip(ahlabels, ahvalues):
+    plt.plot(data)
+    plt.title('{0}'.format(name), fontsize = 36, color = "grey")
+    plt.tick_params(axis='y', which='major', labelsize=24)
+    plt.tick_params(axis='x', which='major', labelsize=24)
+    fig = plt.gcf()
+    fig.set_size_inches((10, 6.6667))
+    plt.savefig('dec2/andrewhexagonal/{0}t.png'.format(name), dpi = 144)
+    plt.show()
+
+for name, data in zip(ahlabels, ahvalues):
+    data = data[-14000:]
+    seaborn.distplot(data, kde = False, fit = scipy.stats.norm, color = "grey")
+    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data), numpy.std(data)), fontsize = 36)
+    plt.tick_params(axis='y', which='major', labelsize=24)
+    plt.tick_params(axis='x', which='major', labelsize=24)
+    fig = plt.gcf()
+    fig.set_size_inches((10, 6.6667))
+    plt.savefig('dec2/andrewhexagonal/{0}d.png'.format(name), dpi = 144)
+    plt.show()
+#%%
+hmch.posterior_predictive(plot = True, lastN = 200)
+plt.title('Posterior predictive', fontsize = 72)
+plt.xlabel('Mode', fontsize = 48)
+plt.ylabel('Computed - Measured (khz)', fontsize = 48)
+plt.tick_params(axis='y', which='major', labelsize=48)
+plt.tick_params(axis='x', which='major', labelsize=16)
+fig = plt.gcf()
+fig.set_size_inches((24, 16))
+plt.savefig('dec2/andrewhexagonal/posteriorpredictive.png', dpi = 144)
+plt.show()
 #%%
 
 ranges = [[2.0, 7.5],
