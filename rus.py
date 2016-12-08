@@ -164,7 +164,7 @@ class HMC():
 
         for N in Ns[:-1]:
             # Compute for each N the maximum number of modes it gets accurate vs. the highest order approx.
-            lt = max(self.modes)
+            lt = max(self.modes) + 1
             for s in range(self.S):
                 errors = numpy.abs((freqs[N][s] - freqs[Ns[-1]][s]) / freqs[Ns[-1]][s])
 
