@@ -285,7 +285,7 @@ class HMC():
                 if p == 'std':
                     continue
 
-                dKdp, _ = polybasisqu.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp[s], self.pv[s], self.density[s])
+                dKdp, _ = polybasisqu.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp[0], self.pv[0], self.density[0])
 
                 dldps[(p, 0)] = numpy.array([evecs[:, j].T.dot(dKdp.dot(evecs[:, j])) for j in range(evecs.shape[1])])
 
