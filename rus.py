@@ -274,7 +274,7 @@ class HMC():
                 dldps[("y", r)] = numpy.array([evecs[:, j].T.dot(dKdys.dot(evecs[:, j])) for j in range(evecs.shape[1])])
                 dldps[("z", r)] = numpy.array([evecs[:, j].T.dot(dKdzs.dot(evecs[:, j])) for j in range(evecs.shape[1])])
         else:
-            K, M = polybasisqu.buildKM(C, self.dp[s], self.pv[s], self.density[s])
+            K, M = polybasisqu.buildKM(C, self.dp[0], self.pv[0], self.density[0])
 
             eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + self.resolution - 1))#max(self.modes)
 

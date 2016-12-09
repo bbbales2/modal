@@ -115,7 +115,7 @@ data = numpy.array([[141.637,
 415.174,
 423.374,
 427.188,
-427.463]])
+427.463]])[:, :25]
 
 #%%
 
@@ -151,8 +151,7 @@ hmc = rus.HMC(density = density, X = X, Y = Y, Z = Z,
               stiffness_matrix = C, # Stiffness matrix
               parameters = { c11 : c110, anisotropic : anisotropic0, c44 : c440, 'std' : std0 }, # Parameters
               rotations = [0, 1, 2],
-              T = 1.0,
-              maxN = 8)
+              T = 1.0)
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
