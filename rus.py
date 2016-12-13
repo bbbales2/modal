@@ -32,10 +32,10 @@ class HMC():
     def __init__(self, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None, rotations = None, T = 1.0, tol = 1e-3, maxN = 12, N = None):
         self.C = stiffness_matrix
         self.dC = {}
-        self.density = density
-        self.X = X
-        self.Y = Y
-        self.Z = Z
+        self.density = [density] if numpy.isscalar(density) else density
+        self.X = [X] if numpy.isscalar(X) else X
+        self.Y = [Y] if numpy.isscalar(Y) else Y
+        self.Z = [Z] if numpy.isscalar(Z) else Z
         self.T = T
         self.order = {}
         self.initial_conditions = parameters
@@ -358,8 +358,12 @@ class HMC():
             q = self.current_q.copy()
             qr = self.current_qr.copy()
 
+            print q, qr
+
             p = numpy.random.randn(len(q)) # independent standard normal variates
             pr = numpy.random.randn(*qr.shape)
+
+            print p, pr
 
             for r in range(self.R):
                 pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
@@ -554,7 +558,7 @@ class HMC():
 
                 eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
 
-                posterior_predictive[:, i, s] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+                posterior_predictive[:, i, s] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000) + numpy.random.randn() * qdict['std']
         #print l, r, posterior_predictive[0]
 
         for s in which_samples:#range(self.S):

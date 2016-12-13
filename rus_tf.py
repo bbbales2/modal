@@ -8,6 +8,7 @@ import os
 os.chdir('/home/bbales2/modal')
 
 import rus
+import pickle
 reload(rus)
 #%%
 
@@ -115,7 +116,7 @@ data = numpy.array([[141.637,
 415.174,
 423.374,
 427.188,
-427.463]])[:, :25]
+427.463]])[:1, :30]
 
 #%%
 
@@ -150,21 +151,29 @@ hmc = rus.HMC(density = density, X = X, Y = Y, Z = Z,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
               parameters = { c11 : c110, anisotropic : anisotropic0, c44 : c440, 'std' : std0 }, # Parameters
-              rotations = [0, 1, 2],
+              rotations = True,
               T = 1.0)
+
+print hmc.resolutions
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
-hmc.sample(steps = 2, debug = True)
+hmc.sample(steps = 5, debug = True)
 #%%
-hmc.set_timestepping(epsilon = epsilon * 10.0, L = 50)
-hmc.sample(debug = False)#True)#False)#True)
+while True:
+    with open('/home/bbales2/modal/ti/tmp', 'w') as f:
+        pickle.dump(hmc, f)
+
+    os.rename('/home/bbales2/modal/ti/tmp', '/home/bbales2/modal/ti/backup')
+
+    hmc.set_timestepping(epsilon = epsilon * 50.0, L = 50)
+    hmc.sample(steps = 100, debug = False)#True)#False)#True)
 #%%
-hmc.derivative_check()
+#hmc.derivative_check()
 #%%
-hmc.set_timestepping(epsilon = epsilon * 20, L = 75)
-hmc.sample(debug = True)#False)#True)
+#hmc.set_timestepping(epsilon = epsilon * 20, L = 75)
+#hmc.sample(debug = True)#False)#True)
 #%%
-hmc.print_current()
+#hmc.print_current()
 #%%
-hmc.posterior_predictive(plot = True, lastN = 200, which_samples = [0, 2])
+#hmc.posterior_predictive(plot = True, lastN = 200, which_samples = [0, 2])
