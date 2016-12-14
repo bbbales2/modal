@@ -202,9 +202,24 @@ hmc.sample(debug = True)#False)#True)
 #%%
 hmc.print_current()
 #%%
-hmc.posterior_predictive(plot = False)
+hmc.posterior_predictive(plot = True, lastN = 200)
+plt.title('Posterior predictive', fontsize = 72)
+plt.xlabel('Mode', fontsize = 48)
+plt.ylabel('Computed - Measured (khz)', fontsize = 48)
+plt.tick_params(axis='y', which='major', labelsize=48)
+plt.tick_params(axis='x', which='major', labelsize=16)
+fig = plt.gcf()
+fig.set_size_inches((24, 16))
+plt.savefig('dec2/cmsxhigh/posteriorpredictive.png', dpi = 144)
+plt.show()
 #%%
 hmc.save('/home/bbales2/modal/paper/cmsx4/qs.csv')
+#%%
+import pickle
+
+f = open('/home/bbales2/modal/dec2/cmsx4high.pkl', 'w')
+pickle.dump(hmc, f)
+f.close()
 #%%
 import polybasisqu
 import pandas

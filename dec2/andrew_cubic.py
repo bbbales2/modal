@@ -12,34 +12,52 @@ reload(rus)
 #%%
 #656 samples
 #%%
-
-# basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 12
-
 ## Dimensions for TF-2
-X = 0.011959#0.007753
-Y = 0.013953#0.009057
-Z = 0.019976#0.013199
+X = 0.0055#0.007753
+Y = 0.010785#0.009057
+Z = 0.01302#0.013199
 
 #Sample density
-density = 8700.0#4401.695921 #Ti-64-TF2
+density = 8054.10909#4401.695921 #Ti-64-TF2
 
 c110 = 2.0
-anisotropic0 = 2.0
+anisotropic0 = 1.0
 c440 = 1.0
 c120 = -(c440 * 2.0 / anisotropic0 - c110)
 
 # Standard deviation around each mode prediction
 std0 = 5.0
 
-data = numpy.array([71.25925,
-75.75875,
-86.478,
-89.947375,
-111.150125,
-112.164125,
-120.172125,
-127.810375])
+data = numpy.array([86.916,
+108.277,
+146.582,
+155.722,
+166.274,
+167.510,
+173.016,
+181.229,
+195.209,
+204.479,
+218.063,
+225.679,
+240.271,
+251.107,
+254.079,
+258.857,
+264.639,
+281.978,
+286.834,
+287.739,
+311.693,
+318.010,
+327.643,
+328.771,
+336.807,
+338.585,
+342.069,
+344.734,
+346.879,
+350.192])
 
 #%%
 
@@ -75,19 +93,30 @@ hmc = rus.HMC(tol = 1e-3,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
               parameters = { c11 : c110, anisotropic : anisotropic0, c44 : c440, 'std' : std0 }, # Parameters
-              rotations = True,
+              rotations = False,
               T = 1.0)
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 #hmc.print_current()
 #hmc.computeResolutions(1e-3)
-hmc.set_resolution(8)
 hmc.sample(steps = 5, debug = True)
 #%%
-hmc.set_resolution(8)
 hmc.set_timestepping(epsilon = epsilon * 10.0, L = 50)
 hmc.sample(debug = False)#True)#False)#True)
+#%%
+hmc.derivative_check()
+#%%
+hmc.set_timestepping(epsilon = epsilon * 20, L = 75)
+hmc.sample(debug = True)#False)#True)
+#%%
+hmc.print_current()
+#%%
+import pickle
+
+f = open('/home/bbales2/modal/dec2/andrew_cubic.pkl', 'w')
+pickle.dump(hmc, f)
+f.close()
 #%%
 import matplotlib.pyplot as plt
 import seaborn
@@ -96,57 +125,11 @@ for name, data1 in zip(*hmc.format_samples()):
     plt.plot(data1)
     plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
     plt.tick_params(axis='y', which='major', labelsize=16)
-    plt.tick_params(axis='x', which='major', labelsize=16)
-    fig = plt.gcf()
-    fig.set_size_inches((10, 6))
     plt.show()
 #%%
 for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-14000:]
+    data1 = data1[-2000:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)
-    fig = plt.gcf()
-    fig.set_size_inches((10, 6))
     plt.show()
-
-#%%
-hmc.posterior_predictive(plot = True, lastN = 200)
-plt.title('Posterior predictive', fontsize = 72)
-plt.xlabel('Mode', fontsize = 48)
-plt.ylabel('Computed - Measured (khz)', fontsize = 48)
-plt.tick_params(axis='y', which='major', labelsize=48)
-plt.tick_params(axis='x', which='major', labelsize=48)
-fig = plt.gcf()
-fig.set_size_inches((24, 16))
-plt.savefig('dec2/cmsxlow/posteriorpredictive.png', dpi = 144)
-plt.show()
-#%%
-
-
-import sklearn.mixture
-import pickle
-
-with open('friday_demo_hires.pkl', 'w') as f:
-    pickle.dump(hmc.format_samples(), f)
-
-#%%
-labels, values = hmc.format_samples()
-
-qs = numpy.array([q for q in zip(*values[0:4]) if q[0] < 4.0])
-
-#%%
-
-seaborn.distplot(qs[:, 3], kde = False, bins = 50)
-#%%
-
-hmc.posterior_predictive(200)
-#%%
-
-gmm = sklearn.mixture.GMM(2)
-
-gmm.fit(qs[:, :1])
-
-print gmm.weights_
-print gmm.means_
-print gmm.covars_

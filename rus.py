@@ -32,10 +32,10 @@ class HMC():
     def __init__(self, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None, rotations = None, T = 1.0, tol = 1e-3, maxN = 12, N = None):
         self.C = stiffness_matrix
         self.dC = {}
-        self.density = density
-        self.X = X
-        self.Y = Y
-        self.Z = Z
+        self.density = [density] if numpy.isscalar(density) else density
+        self.X = [X] if numpy.isscalar(X) else X
+        self.Y = [Y] if numpy.isscalar(Y) else Y
+        self.Z = [Z] if numpy.isscalar(Z) else Z
         self.T = T
         self.order = {}
         self.initial_conditions = parameters
@@ -121,7 +121,8 @@ class HMC():
 
     # Building a lookup that returns, given a number of modes, the order of the polynomials N in the Rayleigh Ritz expansion
     def compute_resolutions(self, tol):
-        modes = {}
+        # This will hold result of computing 2D array of all freqs
+        freqs = {}
 
         Ns = range(8, self.maxN + 4, 2)
 
@@ -129,47 +130,59 @@ class HMC():
             qdict = self.qdict(self.current_q)
             qr = self.current_qr
 
-            perNModes = []
+            self.dps[N] = {}
+            self.pvs[N] = {}
+
+            freqsTmp = []
 
             for p in qdict:
                 qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
 
-            for r in range(max(self.R, 1)):
+            for s in range(self.S):
                 C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
 
                 if self.rotations:
-                    w, x, y, z = qr[self.rotations[r]]
+                    w, x, y, z = qr[self.rotations[s]]
 
                     C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
 
-                dp, pv, _, _, _, _, _, _ = polybasisqu.build(N, self.X, self.Y, self.Z)
+                dp, pv, _, _, _, _, _, _ = polybasisqu.build(N, self.X[s], self.Y[s], self.Z[s])
 
-                self.dps[N] = dp
-                self.pvs[N] = pv
+                self.dps[N][s] = dp
+                self.pvs[N][s] = pv
 
-                K, M = polybasisqu.buildKM(C, dp, pv, self.density)
+                K, M = polybasisqu.buildKM(C, dp, pv, self.density[s])
 
                 eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
 
-                freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+                freqsTmp.append(numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000))
 
-                perNModes.append(freqs)
-
-            modes[N] = numpy.array(perNModes)
+            freqs[N] = freqsTmp
 
         resolutions = []
         Nvs = []
 
         for N in Ns[:-1]:
-            lt = numpy.where(numpy.max(numpy.abs((modes[N] - modes[Ns[-1]]) / modes[Ns[-1]]), axis = 0) > tol)[0]
+            # Compute for each N the maximum number of modes it gets accurate vs. the highest order approx.
+            lt = max(self.modes) + 1
+            for s in range(self.S):
+                errors = numpy.abs((freqs[N][s] - freqs[Ns[-1]][s]) / freqs[Ns[-1]][s])
 
-            if len(lt) != 0:
-                if lt[0] not in resolutions and lt[0] > 0:
-                    resolutions.append(lt[0] - 1)
-                    Nvs.append(N)
+                for i in range(len(errors)):
+                    if errors[i] >= tol:
+                        lt = min(lt, i)
+                        break
 
-        supremumN = min(set(Ns) - set(range(max(Nvs) + 1)))
+            if lt not in resolutions and lt > 0:
+                resolutions.append(lt - 1)
+                Nvs.append(N)
 
+        if len(Nvs) > 0:
+            supremumN = min(set(Ns) - set(range(max(Nvs) + 1)))
+        else:
+            supremumN = Ns[0]
+
+        # Set for each number of modes the lowest N which gets things right (within tol)
         self.resolutions = {}
         for m in range(max(self.modes) + 1):
             i = bisect.bisect_left(resolutions, m)
@@ -225,67 +238,56 @@ class HMC():
         if self.rotations:
             dlogpdqr_total = numpy.zeros((self.R, 4))
 
-        evecs = {}
         freqs = {}
         dfreqsdl = {}
 
+        dldps = {}
         if self.rotations:
-            dKdws = {}
-            dKdxs = {}
-            dKdys = {}
-            dKdzs = {}
-            Ks = {}
-
-            for r in set(self.rotations):
+            for s, r in enumerate(self.rotations):
                 w, x, y, z = qr[r]
 
-                Cr, dCdw, dCdx, dCdy, dCdz, Ks[r] = polybasisqu.buildRot(C, w, x, y, z)
+                Cr, dCdw, dCdx, dCdy, dCdz, Kr = polybasisqu.buildRot(C, w, x, y, z)
 
-                dKdws[r], _ = polybasisqu.buildKM(dCdw, self.dp, self.pv, self.density)
-                dKdxs[r], _ = polybasisqu.buildKM(dCdx, self.dp, self.pv, self.density)
-                dKdys[r], _ = polybasisqu.buildKM(dCdy, self.dp, self.pv, self.density)
-                dKdzs[r], _ = polybasisqu.buildKM(dCdz, self.dp, self.pv, self.density)
+                dKdws, _ = polybasisqu.buildKM(dCdw, self.dp[s], self.pv[s], self.density[s])
+                dKdxs, _ = polybasisqu.buildKM(dCdx, self.dp[s], self.pv[s], self.density[s])
+                dKdys, _ = polybasisqu.buildKM(dCdy, self.dp[s], self.pv[s], self.density[s])
+                dKdzs, _ = polybasisqu.buildKM(dCdz, self.dp[s], self.pv[s], self.density[s])
 
                 # Likelihood p(data | params)
-                K, M = polybasisqu.buildKM(Cr, self.dp, self.pv, self.density)
+                K, M = polybasisqu.buildKM(Cr, self.dp[s], self.pv[s], self.density[s])
 
-                eigs, evecs[r] = scipy.linalg.eigh(K, M, eigvals = (6, 6 + self.resolution - 1))#max(self.modes)
+                eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + self.resolution - 1))#max(self.modes)
 
                 freqs[r] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
                 dfreqsdl[r] = 0.5e11 / (numpy.sqrt(eigs * 1e11) * numpy.pi * 2000)
-        else:
-            K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
 
-            eigs, evecs[0] = scipy.linalg.eigh(K, M, eigvals = (6, 6 + self.resolution - 1))#max(self.modes)
-
-            freqs[0] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
-            dfreqsdl[0] = 0.5e11 / (numpy.sqrt(eigs * 1e11) * numpy.pi * 2000)
-
-        dldps = {}
-        if self.rotations:
-            for r in set(self.rotations):
                 for p, i in self.order.items():
                     if p == 'std':
                         continue
 
-                    K = Ks[r]
+                    dKdp, _ = polybasisqu.buildKM(Kr.dot(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float')).dot(Kr.T), self.dp[s], self.pv[s], self.density[s])
 
-                    dKdp, _ = polybasisqu.buildKM(K.dot(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float')).dot(K.T), self.dp, self.pv, self.density)
+                    dldps[(p, r)] = numpy.array([evecs[:, j].T.dot(dKdp.dot(evecs[:, j])) for j in range(evecs.shape[1])])
 
-                    dldps[(p, r)] = numpy.array([evecs[r][:, j].T.dot(dKdp.dot(evecs[r][:, j])) for j in range(evecs[r].shape[1])])
-
-                dldps[("w", r)] = numpy.array([evecs[r][:, j].T.dot(dKdws[r].dot(evecs[r][:, j])) for j in range(evecs[r].shape[1])])
-                dldps[("x", r)] = numpy.array([evecs[r][:, j].T.dot(dKdxs[r].dot(evecs[r][:, j])) for j in range(evecs[r].shape[1])])
-                dldps[("y", r)] = numpy.array([evecs[r][:, j].T.dot(dKdys[r].dot(evecs[r][:, j])) for j in range(evecs[r].shape[1])])
-                dldps[("z", r)] = numpy.array([evecs[r][:, j].T.dot(dKdzs[r].dot(evecs[r][:, j])) for j in range(evecs[r].shape[1])])
+                dldps[("w", r)] = numpy.array([evecs[:, j].T.dot(dKdws.dot(evecs[:, j])) for j in range(evecs.shape[1])])
+                dldps[("x", r)] = numpy.array([evecs[:, j].T.dot(dKdxs.dot(evecs[:, j])) for j in range(evecs.shape[1])])
+                dldps[("y", r)] = numpy.array([evecs[:, j].T.dot(dKdys.dot(evecs[:, j])) for j in range(evecs.shape[1])])
+                dldps[("z", r)] = numpy.array([evecs[:, j].T.dot(dKdzs.dot(evecs[:, j])) for j in range(evecs.shape[1])])
         else:
+            K, M = polybasisqu.buildKM(C, self.dp[0], self.pv[0], self.density[0])
+
+            eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + self.resolution - 1))#max(self.modes)
+
+            freqs[0] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+            dfreqsdl[0] = 0.5e11 / (numpy.sqrt(eigs * 1e11) * numpy.pi * 2000)
+
             for p, i in self.order.items():
                 if p == 'std':
                     continue
 
-                dKdp, _ = polybasisqu.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp, self.pv, self.density)
+                dKdp, _ = polybasisqu.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp[0], self.pv[0], self.density[0])
 
-                dldps[(p, 0)] = numpy.array([evecs[0][:, j].T.dot(dKdp.dot(evecs[0][:, j])) for j in range(evecs[0].shape[1])])
+                dldps[(p, 0)] = numpy.array([evecs[:, j].T.dot(dKdp.dot(evecs[:, j])) for j in range(evecs.shape[1])])
 
         for s in range(self.S):
             if self.rotations:
@@ -356,8 +358,12 @@ class HMC():
             q = self.current_q.copy()
             qr = self.current_qr.copy()
 
+            print q, qr
+
             p = numpy.random.randn(len(q)) # independent standard normal variates
             pr = numpy.random.randn(*qr.shape)
+
+            print p, pr
 
             for r in range(self.R):
                 pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
@@ -499,42 +505,43 @@ class HMC():
         for p in qdict:
             qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
 
-        for r in range(max(self.R, 1)):
+        for s in range(self.S):
             C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
 
             if self.rotations:
-                w, x, y, z = qr[self.rotations[r]]
+                w, x, y, z = qr[self.rotations[s]]
 
                 C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
 
-            K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
+            K, M = polybasisqu.buildKM(C, self.dp[s], self.pv[s], self.density[s])
 
             eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
 
             freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
 
-            errors = []
-            for s in range(self.S):
-                errors.extend(freqs - self.data[s])
+            errors = freqs - self.data[s]
 
+            print "Sample: {0}".format(s)
             if self.rotations:
-                print "Rotation: {0}".format(r)
+                print "Rotation: {0}".format(self.rotations[s])
             print "Mean error: ", numpy.mean(errors)
             print "Std deviation in error: ", numpy.std(errors)
 
-            print ", ".join(["Computed"] + ["Measured"] * self.S)
+            print "Computed, Measured"
             for i, freq in enumerate(freqs):
-                toPrint = [freq] + [self.data[s][i] if i < len(self.data[s]) else None for s in range(self.S)]
+                if i < len(self.data[s]):
+                    print "{0:0.{2}f}, {1:0.{2}f}".format(freq, self.data[s][i], precision)
 
-                print ", ".join([("{0:0.{1}f}".format(a, precision) if a else "") for a in toPrint])
-
-    def posterior_predictive(self, lastN = 200, precision = 5, plot = True):
+    def posterior_predictive(self, lastN = 200, precision = 5, plot = True, which_samples = None):
         lastN = min(lastN, len(self.qs))
 
-        posterior_predictive = numpy.zeros((max(self.modes), lastN, max(self.R, 1)))
+        posterior_predictive = numpy.zeros((max(self.modes), lastN, self.S))
+
+        if which_samples == None:
+            which_samples = range(self.S)
 
         for i, (q, qr) in enumerate(zip(self.qs[-lastN:], self.qrs[-lastN:])):
-            for r in range(max(self.R, 1)):
+            for s in which_samples:#range(self.S):
                 qdict = self.qdict(q)
         
                 qr = self.current_qr
@@ -545,25 +552,25 @@ class HMC():
                 C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
 
                 if self.rotations:
-                    w, x, y, z = qr[self.rotations[r]]
+                    w, x, y, z = qr[self.rotations[s]]
 
                     C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
 
-                K, M = polybasisqu.buildKM(C, self.dp, self.pv, self.density)
+                K, M = polybasisqu.buildKM(C, self.dp[s], self.pv[s], self.density[s])
 
                 eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
 
-                posterior_predictive[:, i, r] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+                posterior_predictive[:, i, s] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000) + numpy.random.randn() * qdict['std']
         #print l, r, posterior_predictive[0]
 
-        for s in range(self.S):
+        for s in which_samples:#range(self.S):
             if self.rotations:
                 r = self.rotations[s]
             else:
                 r = 0
 
-            ppl = numpy.percentile(posterior_predictive[:, :, r], 2.5, axis = 1)
-            ppr = numpy.percentile(posterior_predictive[:, :, r], 97.5, axis = 1)
+            ppl = numpy.percentile(posterior_predictive[:, :, s], 2.5, axis = 1)
+            ppr = numpy.percentile(posterior_predictive[:, :, s], 97.5, axis = 1)
 
             if plot and matplotlib_available:
                 data = []
@@ -571,7 +578,7 @@ class HMC():
                 for l in range(len(self.data[s])):
                     tmp = []
                     for ln in range(lastN):
-                        tmp.append(posterior_predictive[l, ln, r] - self.data[s][l])
+                        tmp.append(posterior_predictive[l, ln, s] - self.data[s][l])
 
                     data.append(tmp)
 
