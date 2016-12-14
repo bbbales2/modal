@@ -337,6 +337,7 @@ class HMC():
 
     def set_timestepping(self, epsilon = 0.0001, L = 50, param_scaling = None):
         self.epsilon = epsilon
+        self.epsilonr = epsilon
 
         if param_scaling != None:
             self.epsilon = numpy.ones(len(self.order)) * self.epsilon
@@ -351,6 +352,7 @@ class HMC():
             raise Exception("Must call 'rus.HMC.set_timestepping' before 'rus.HMC.sample'")
 
         epsilon = self.epsilon
+        epsilonr = self.epsilonr
         L = self.L
 
         step = 0
@@ -375,7 +377,7 @@ class HMC():
             p = p - epsilon * gradU / 2
 
             if self.rotations:
-                pr = pr - epsilon * gradUr / 2
+                pr = pr - epsilonr * gradUr / 2
 
                 for r in range(self.R):
                     pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
@@ -391,8 +393,8 @@ class HMC():
                     m1 = numpy.array([[1.0, 0.0],
                                       [0.0, 1 / alpha]])
 
-                    m2 = numpy.array([[numpy.cos(alpha * epsilon), -numpy.sin(alpha * epsilon)],
-                                      [numpy.sin(alpha * epsilon), numpy.cos(alpha * epsilon)]])
+                    m2 = numpy.array([[numpy.cos(alpha * epsilonr), -numpy.sin(alpha * epsilonr)],
+                                      [numpy.sin(alpha * epsilonr), numpy.cos(alpha * epsilonr)]])
 
                     m3 = numpy.array([[1.0, 0.0],
                                       [0.0, alpha]])
@@ -411,7 +413,7 @@ class HMC():
                     p = p - epsilon * gradU
 
                     if self.rotations:
-                        pr = pr - epsilon * gradUr
+                        pr = pr - epsilonr * gradUr
 
                         for r in range(self.R):
                             pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
@@ -426,7 +428,7 @@ class HMC():
             p = p - epsilon * gradU / 2
 
             if self.rotations:
-                pr = pr - epsilon * gradUr / 2
+                pr = pr - epsilonr * gradUr / 2
 
                 for s in range(self.R):
                     pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
