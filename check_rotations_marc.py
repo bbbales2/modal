@@ -12,10 +12,10 @@ import itertools
 
 #q = [0.98849515554696088, -0.0026722254086214156, 0.015326741589590076, 0.15045024979640861]
 #q = (0.981, 0.0, 0.0, -0.1908)
-#q = [0.988, 0.0, 0.006, -0.152]
+q = [0.988, 0.0, 0.006, -0.152]
 #q = (0.988, 0.0, -0.01, 0.152)
 #q = [ 0.98805806, -0.00772966, -0.00900226, -0.15362448]#[0.98845476, -0.00572989, -0.0177229, -0.15036705]
-q = [0.594756, -0.202874, 0.640152, 0.441943]
+#q = [0.594756, -0.202874, 0.640152, 0.441943]
 #q = [0.874, -0.170, -0.033, 0.455]
 #q = [0.87095, 0.17028, 0.03090, 0.45989]
 #q = [0.939, -0.097, 0.144, 0.296]
@@ -24,11 +24,12 @@ q = q / numpy.linalg.norm(q)
 
 q1 = quaternion.Quaternion(q)
 
-q = [0.940, -0.093, -0.144, -0.295]
+q = [-0.425, -0.425, 0.565, 0.565]
+#q = [0.940, -0.093, -0.144, -0.295]
 #q = [-0.425, -0.425, 0.565, 0.564]
 #q = [0.803, 0.0, 0.0, 0.595]
 #q = [0.98849515554696088, -0.0026722254086214156, -0.015326741589590076, 0.15045024979640861]
-#q = [ 0.98805806, -0.00772966, -0.00900226, -0.15362448]#[0.98845476, -0.00572989, -0.0177229, -0.15036705]
+#q = [ 0.98805806, -0.00772966, 0.00900226, -0.15362448]#[0.98845476, -0.00572989, -0.0177229, -0.15036705]
 #
 #q = [0.873, -0.034, 0.168, 0.456]
 #q = [0.94295, 0.09604, -0.14072, 0.28605]
@@ -62,20 +63,20 @@ def adj(q):
 
 for i in range(len(cubicSym)):
     for ii in range(len(orthoSym)):
-        qa = adj(orthoSym[ii] * q1 * cubicSym[i])
+        qa = orthoSym[ii] * q1 * cubicSym[i]
 
         for j in range(len(cubicSym)):
             for jj in range(len(orthoSym)):
-                qb = adj(orthoSym[jj] * q2 * cubicSym[j])
+                qb = orthoSym[jj] * q2 * cubicSym[j]
 
-                qasb1 = adj(qa * qb.conjugate())
-                qasb2 = adj(qb * qa.conjugate())
+                qasb1 = qa.conjugate() * qb
+                #qasb2 = qb.conjugate() * qa
 
                 t1 = qasb1.wxyz / numpy.linalg.norm(qasb1.wxyz)
-                t2 = qasb2.wxyz / numpy.linalg.norm(qasb2.wxyz)
+                #t2 = qasb2.wxyz / numpy.linalg.norm(qasb2.wxyz)
 
                 a1 = 2 * numpy.arccos(t1[0]) * 180 / numpy.pi
-                a2 = 2 * numpy.arccos(t2[0]) * 180 / numpy.pi
+                #a2 = 2 * numpy.arccos(t2[0]) * 180 / numpy.pi
 
                 #a1 = 2 * numpy.arccos(qasb1.wxyz[0]) * 180 / numpy.pi
                 #a2 = 2 * numpy.arccos(qasb2.wxyz[0]) * 180 / numpy.pi
@@ -85,9 +86,9 @@ for i in range(len(cubicSym)):
                     misoa = qasb1
                     #print t1, t2
 
-                if a2 < miso:
-                    miso = a2
-                    misoa = qasb2
+                #if a2 < miso:
+                #    miso = a2
+                 #   misoa = qasb2
                     #print 'b', t1, t2
                     #1/0
                     #miso = min(miso, )

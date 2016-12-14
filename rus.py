@@ -358,12 +358,8 @@ class HMC():
             q = self.current_q.copy()
             qr = self.current_qr.copy()
 
-            print q, qr
-
             p = numpy.random.randn(len(q)) # independent standard normal variates
             pr = numpy.random.randn(*qr.shape)
-
-            print p, pr
 
             for r in range(self.R):
                 pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])

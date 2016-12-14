@@ -14,14 +14,25 @@ with open('dec2/friday_demo_lowres.pkl') as f:
 with open('dec2/friday_demo_hires.pkl') as f:
     hlabels, hvalues = pickle.load(f)
 
+#with open('dec2/lowres') as f:
+#    hmcl = pickle.load(f)
+#    llabels, lvalues = hmcl.format_samples()
+
 with open('dec2/andrew_cubic.pkl') as f:
     hmcc = pickle.load(f)
     aclabels, acvalues = hmcc.format_samples()
+
+hmcc.dp = [hmcc.dp]
+hmcc.pv = [hmcc.pv]
+hmcc.density = [hmcc.density]
 
 with open('dec2/andrew_hexagonal.pkl') as f:
     hmcf = pickle.load(f)
     ahlabels, ahvalues = hmcf.format_samples()
 
+hmcf.dp = [hmcf.dp]
+hmcf.pv = [hmcf.pv]
+hmcf.density = [hmcf.density]
 
 #%%
 import scipy.stats
@@ -40,16 +51,6 @@ for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
     plt.show()
 
 for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
-    plt.plot(data2)
-    plt.title('{0}'.format(name2), fontsize = 36)
-    plt.tick_params(axis='y', which='major', labelsize=24)
-    plt.tick_params(axis='x', which='major', labelsize=24)
-    fig = plt.gcf()
-    fig.set_size_inches((10, 6.6667))
-    plt.savefig('dec2/cmsxhigh/{0}t.png'.format(name2), dpi = 144)
-    plt.show()
-
-for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
     data1 = data1[-14000:]
     data2 = data2[-1000:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm, color = "grey")
@@ -59,6 +60,16 @@ for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
     fig = plt.gcf()
     fig.set_size_inches((10, 6.6667))
     plt.savefig('dec2/cmsxlow/{0}d.png'.format(name1), dpi = 144)
+    plt.show()
+#%%
+for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
+    plt.plot(data2)
+    plt.title('{0}'.format(name2), fontsize = 36)
+    plt.tick_params(axis='y', which='major', labelsize=24)
+    plt.tick_params(axis='x', which='major', labelsize=24)
+    fig = plt.gcf()
+    fig.set_size_inches((10, 6.6667))
+    plt.savefig('dec2/cmsxhigh/{0}t.png'.format(name2), dpi = 144)
     plt.show()
 
 for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
@@ -95,7 +106,7 @@ for name, data in zip(aclabels, acvalues):
     fig.set_size_inches((10, 6.6667))
     plt.savefig('dec2/andrewcubic/{0}d.png'.format(name), dpi = 144)
     plt.show()
-    #%%
+#%%
 hmcc.posterior_predictive(plot = True, lastN = 200)
 plt.title('Posterior predictive', fontsize = 72)
 plt.xlabel('Mode', fontsize = 48)
@@ -262,3 +273,198 @@ fit = sm.sampling(data = {
 })
 
 print fit
+#%%
+#%%
+import polybasisqu
+
+def posterior_predictive(qs, data, lastN = 200, precision = 5, plot = True, which_samples = None):
+        lastN = min(lastN, len(qs))
+
+        modes = len(data)
+
+        posterior_predictive = numpy.zeros((modes, lastN, 1))
+
+        if which_samples == None:
+            which_samples = range(1)
+
+        for i, q in enumerate(qs[-lastN:]):
+            for s in which_samples:
+                c11 = q[0]
+                std = q[1]
+                a = q[2]
+                c44 = q[3]
+
+                c12 = -(c44 * 2.0 / a - c11)
+
+                C = numpy.array([[c11, c12, c12, 0, 0, 0],
+                                  [c12, c11, c12, 0, 0, 0],
+                                  [c12, c12, c11, 0, 0, 0],
+                                  [0, 0, 0, c44, 0, 0],
+                                  [0, 0, 0, 0, c44, 0],
+                                  [0, 0, 0, 0, 0, c44]])
+
+                w, x, y, z = q[4:]
+
+                C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
+
+                K, M = polybasisqu.buildKM(C, dp, pv, density)
+
+                eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + modes - 1))
+
+                posterior_predictive[:, i, s] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000) + numpy.random.randn() * std
+        #print l, r, posterior_predictive[0]
+
+        print posterior_predictive
+#
+##%%
+        for s in [0]:
+            r = 0
+
+            ppl = numpy.percentile(posterior_predictive[:, :, s], 2.5, axis = 1)
+            ppr = numpy.percentile(posterior_predictive[:, :, s], 97.5, axis = 1)
+
+            if plot:
+                generated = []
+
+                for l in range(len(data)):
+                    tmp = []
+                    for ln in range(lastN):
+                        tmp.append(posterior_predictive[l, ln, s] - data[l])
+
+                    generated.append(tmp)
+
+                generated = numpy.array(generated)
+                plt.boxplot(numpy.array(generated).transpose())
+
+                #ax1 = plt.gca()
+
+                #for ll, meas, rr, tick in zip(ppl, self.data[s], ppr, range(len(self.data[s]))):
+                #    ax1.text(tick + 1, ax1.get_ylim()[1] * 0.90, '{0:10.{3}f} {1:10.{3}f} {2:10.{3}f}'.format(ll, meas, rr, precision),
+                #             horizontalalignment='center', rotation=45, size='x-small')
+                plt.xlabel('Mode')
+                plt.ylabel('Computed - Measured (khz)')
+            else:
+                print "For dataset {0}".format(s)
+                print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
+                for ll, meas, rr in zip(ppl, self.data[s], ppr):
+                    print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
+
+#%%
+
+qs = zip(*lvalues)
+
+N = 8
+
+## Dimensions for TF-2
+X = 0.011959#0.007753
+Y = 0.013953#0.009057
+Z = 0.019976#0.013199
+
+density = 8700.0
+
+data = numpy.array([71.25925,
+75.75875,
+86.478,
+89.947375,
+111.150125,
+112.164125,
+120.172125,
+127.810375])
+
+dp, pv, _, _, _, _, _, _ = polybasisqu.build(N, X, Y, Z)
+
+posterior_predictive(qs, data, 200)
+plt.title('Posterior predictive', fontsize = 72)
+plt.xlabel('Mode', fontsize = 48)
+plt.ylabel('Computed - Measured (khz)', fontsize = 48)
+plt.tick_params(axis='y', which='major', labelsize=48)
+plt.tick_params(axis='x', which='major', labelsize=16)
+fig = plt.gcf()
+fig.set_size_inches((24, 16))
+plt.savefig('dec2/cmsxlow/posteriorpredictive.png', dpi = 144)
+plt.show()
+
+#%%
+
+qs = zip(*[hvalues[0], hvalues[1], hvalues[3], hvalues[2], hvalues[4], hvalues[5], hvalues[6], hvalues[7]])
+
+N = 12
+
+## Dimensions for TF-2
+X = 0.011959#0.007753
+Y = 0.013953#0.009057
+Z = 0.019976#0.013199
+
+density = 8700.0
+
+data = numpy.array([71.25925,
+75.75875,
+86.478,
+89.947375,
+111.150125,
+112.164125,
+120.172125,
+127.810375,
+128.6755,
+130.739875,
+141.70025,
+144.50375,
+149.40075,
+154.35075,
+156.782125,
+157.554625,
+161.0875,
+165.10325,
+169.7615,
+173.44925,
+174.11675,
+174.90625,
+181.11975,
+182.4585,
+183.98625,
+192.68125,
+193.43575,
+198.793625,
+201.901625,
+205.01475,
+206.619,
+208.513875,
+208.83525,
+212.22525,
+212.464125,
+221.169625,
+225.01225,
+227.74775,
+228.31175,
+231.4265,
+235.792875,
+235.992375,
+236.73675,
+238.157625,
+246.431125,
+246.797125,
+248.3185,
+251.69425,
+252.97225,
+253.9795,
+256.869875,
+258.23825,
+259.39025])
+
+dp, pv, _, _, _, _, _, _ = polybasisqu.build(N, X, Y, Z)
+
+posterior_predictive(qs, data, 200)
+plt.title('Posterior predictive', fontsize = 72)
+plt.xlabel('Mode', fontsize = 48)
+plt.ylabel('Computed - Measured (khz)', fontsize = 48)
+plt.tick_params(axis='y', which='major', labelsize=48)
+plt.tick_params(axis='x', which='major', labelsize=16)
+fig = plt.gcf()
+fig.set_size_inches((24, 16))
+plt.savefig('dec2/cmsxhigh/posteriorpredictive.png', dpi = 144)
+plt.show()
+#%%
+#hmc.set_timestepping(epsilon = epsilon, L = 50)
+hmcl.set_timestepping(epsilon = 0.0001 * 25, L = 100)
+
+hmcl.sample(100, debug = False)
