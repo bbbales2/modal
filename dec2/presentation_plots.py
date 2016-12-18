@@ -14,9 +14,13 @@ with open('dec2/friday_demo_lowres.pkl') as f:
 with open('dec2/friday_demo_hires.pkl') as f:
     hlabels, hvalues = pickle.load(f)
 
-#with open('dec2/lowres') as f:
-#    hmcl = pickle.load(f)
-#    llabels, lvalues = hmcl.format_samples()
+with open('dec2/low16res') as f:
+    hmcl = pickle.load(f)
+    llabels, lvalues = hmcl.format_samples()
+
+with open('dec2/hires') as f:
+    hmch = pickle.load(f)
+    hlabels, hvalues = hmch.format_samples()
 
 with open('dec2/andrew_cubic.pkl') as f:
     hmcc = pickle.load(f)
@@ -40,7 +44,7 @@ import scipy.stats
 import matplotlib.pyplot as plt
 import seaborn
 
-for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
+for name1, data1 in zip(llabels, lvalues):
     plt.plot(data1)
     plt.title('{0}'.format(name1), fontsize = 36)
     plt.tick_params(axis='y', which='major', labelsize=24)
@@ -50,9 +54,8 @@ for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
     plt.savefig('dec2/cmsxlow/{0}t.png'.format(name1), dpi = 144)
     plt.show()
 
-for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
-    data1 = data1[-14000:]
-    data2 = data2[-1000:]
+for name1, data1 in zip(llabels, lvalues):
+    data1 = data1[-1000:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm, color = "grey")
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name1, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='y', which='major', labelsize=24)
@@ -62,7 +65,7 @@ for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
     plt.savefig('dec2/cmsxlow/{0}d.png'.format(name1), dpi = 144)
     plt.show()
 #%%
-for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
+for name2, data2 in zip(hlabels, hvalues):
     plt.plot(data2)
     plt.title('{0}'.format(name2), fontsize = 36)
     plt.tick_params(axis='y', which='major', labelsize=24)
@@ -72,8 +75,7 @@ for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
     plt.savefig('dec2/cmsxhigh/{0}t.png'.format(name2), dpi = 144)
     plt.show()
 
-for name1, name2, data1, data2 in zip(llabels, hlabels, lvalues, hvalues):
-    data1 = data1[-14000:]
+for name2, data2 in zip(hlabels, hvalues):
     data2 = data2[-1000:]
     seaborn.distplot(data2, kde = False, fit = scipy.stats.norm, color = "grey")
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name2, numpy.mean(data2), numpy.std(data2)), fontsize = 36)
@@ -118,6 +120,28 @@ fig.set_size_inches((24, 16))
 plt.savefig('dec2/andrewcubic/posteriorpredictive.png', dpi = 144)
 plt.show()
 #%%
+hmcl.posterior_predictive(plot = True, lastN = 200)
+plt.title('Posterior predictive', fontsize = 72)
+plt.xlabel('Mode', fontsize = 48)
+plt.ylabel('Computed - Measured (khz)', fontsize = 48)
+plt.tick_params(axis='y', which='major', labelsize=48)
+plt.tick_params(axis='x', which='major', labelsize=16)
+fig = plt.gcf()
+fig.set_size_inches((24, 16))
+plt.savefig('dec2/cmsxlow/posteriorpredictive.png', dpi = 144)
+plt.show()
+#%%
+hmch.posterior_predictive(plot = True, lastN = 200)
+plt.title('Posterior predictive', fontsize = 72)
+plt.xlabel('Mode', fontsize = 48)
+plt.ylabel('Computed - Measured (khz)', fontsize = 48)
+plt.tick_params(axis='y', which='major', labelsize=48)
+plt.tick_params(axis='x', which='major', labelsize=16)
+fig = plt.gcf()
+fig.set_size_inches((24, 16))
+plt.savefig('dec2/cmsxhigh/posteriorpredictive.png', dpi = 144)
+plt.show()
+#%%
 
 for name, data in zip(ahlabels, ahvalues):
     plt.plot(data)
@@ -140,7 +164,7 @@ for name, data in zip(ahlabels, ahvalues):
     plt.savefig('dec2/andrewhexagonal/{0}d.png'.format(name), dpi = 144)
     plt.show()
 #%%
-hmch.posterior_predictive(plot = True, lastN = 200)
+hmcf.posterior_predictive(plot = True, lastN = 200)
 plt.title('Posterior predictive', fontsize = 72)
 plt.xlabel('Mode', fontsize = 48)
 plt.ylabel('Computed - Measured (khz)', fontsize = 48)
@@ -152,14 +176,14 @@ plt.savefig('dec2/andrewhexagonal/posteriorpredictive.png', dpi = 144)
 plt.show()
 #%%
 
-ranges = [[2.0, 7.5],
-          [0.0, 2.0],
-          [1.1, 1.4],
-          [2.4, 3.1]]
+ranges = [[2.2, 3.1],
+          [0.0, 0.5],
+          [2.8, 2.95],
+          [1.28, 1.35]]
 
 for r, name1, name2, data1, data2 in zip(ranges, llabels[0:4], hlabels[0:4], lvalues[0:4], hvalues[0:4]):
     #data1 = data1[-14000:]
-    data2 = data1[-14000:]#data2[-1000:]
+    data2 = data1[-1000:]#
     seaborn.distplot(data2, kde = False, fit = scipy.stats.norm, color = "grey")
     plt.xlim(r)
     plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name2, numpy.mean(data2), numpy.std(data2)), fontsize = 36)
@@ -167,7 +191,20 @@ for r, name1, name2, data1, data2 in zip(ranges, llabels[0:4], hlabels[0:4], lva
     plt.tick_params(axis='x', which='major', labelsize=24)
     fig = plt.gcf()
     fig.set_size_inches((10, 6.6667))
-    plt.savefig('dec2/cmsxhighlow/{0}dl.png'.format(name2), dpi = 144)
+    plt.savefig('dec2/cmsxhighlowCompare/{0}dl.png'.format(name2), dpi = 144)
+    plt.show()
+
+for r, name1, name2, data1, data2 in zip(ranges, llabels[0:4], hlabels[0:4], lvalues[0:4], hvalues[0:4]):
+    #data1 = data1[-14000:]
+    data2 = data2[-1000:]#
+    seaborn.distplot(data2, kde = False, fit = scipy.stats.norm, color = "grey")
+    plt.xlim(r)
+    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name2, numpy.mean(data2), numpy.std(data2)), fontsize = 36)
+    plt.tick_params(axis='y', which='major', labelsize=24)
+    plt.tick_params(axis='x', which='major', labelsize=24)
+    fig = plt.gcf()
+    fig.set_size_inches((10, 6.6667))
+    plt.savefig('dec2/cmsxhighlowCompare/{0}dh.png'.format(name2), dpi = 144)
     plt.show()
 
 #%%
