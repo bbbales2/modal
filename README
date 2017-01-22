@@ -1,0 +1,5 @@
+This is kindof a chaotic repository that has all the tests and code for a Bayesian method of estimating elastic constants.
+
+The main library file is: https://github.com/bbbales2/modal/blob/master/rus.py
+
+A basic template is: https://github.com/bbbales2/modal/blob/master/rus_cubic_cmsx4_8modes.py
