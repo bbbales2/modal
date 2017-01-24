@@ -32,6 +32,7 @@ c120 = -(c440 * 2.0 / anisotropic0 - c110)
 # Standard deviation around each mode prediction
 std0 = 5.0
 
+# Measured resonance modes
 data = numpy.array([71.25925,
 75.75875,
 86.478,
@@ -56,6 +57,7 @@ epsilon = 0.0001
 debug = False
 
 #%%
+# Initialize model and warm it up
 
 reload(rus)
 
@@ -82,13 +84,13 @@ hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 #hmc.print_current()
 #hmc.computeResolutions(1e-3)
-hmc.set_resolution(8)
 hmc.sample(steps = 5, debug = True)
 #%%
-hmc.set_resolution(8)
+# Run for a long time
 hmc.set_timestepping(epsilon = epsilon * 10.0, L = 50)
 hmc.sample(debug = False)#True)#False)#True)
 #%%
+# Plot traceplots
 import matplotlib.pyplot as plt
 import seaborn
 
@@ -101,6 +103,7 @@ for name, data1 in zip(*hmc.format_samples()):
     fig.set_size_inches((10, 6))
     plt.show()
 #%%
+# Plot approximate posteriors as histograms
 for name, data1 in zip(*hmc.format_samples()):
     data1 = data1[-14000:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
@@ -111,6 +114,7 @@ for name, data1 in zip(*hmc.format_samples()):
     plt.show()
 
 #%%
+# Plot posterior predictive
 hmc.posterior_predictive(plot = True, lastN = 200)
 plt.title('Posterior predictive', fontsize = 72)
 plt.xlabel('Mode', fontsize = 48)
@@ -121,23 +125,6 @@ fig = plt.gcf()
 fig.set_size_inches((24, 16))
 plt.savefig('dec2/cmsxlow/posteriorpredictive.png', dpi = 144)
 plt.show()
-#%%
-
-
-import sklearn.mixture
-import pickle
-
-with open('friday_demo_hires.pkl', 'w') as f:
-    pickle.dump(hmc.format_samples(), f)
-
-#%%
-labels, values = hmc.format_samples()
-
-qs = numpy.array([q for q in zip(*values[0:4]) if q[0] < 4.0])
-
-#%%
-
-seaborn.distplot(qs[:, 3], kde = False, bins = 50)
 #%%
 
 hmc.posterior_predictive(200)
