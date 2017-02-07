@@ -86,6 +86,8 @@ hmc.set_timestepping(epsilon = epsilon, L = 50)
 #hmc.computeResolutions(1e-3)
 hmc.sample(steps = 5, debug = True)
 #%%
+hmc.derivative_check()
+#%%
 # Run for a long time
 hmc.set_timestepping(epsilon = epsilon * 10.0, L = 50)
 hmc.sample(debug = False)#True)#False)#True)

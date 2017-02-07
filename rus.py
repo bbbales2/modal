@@ -29,7 +29,7 @@ def printoptions(*args, **kwargs):
     numpy.set_printoptions(**original)
 
 class HMC():
-    def __init__(self, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None, rotations = None, T = 1.0, tol = 1e-3, maxN = 12, N = None):
+    def __init__(self, density, X, Y, Z, resonance_modes, stiffness_matrix, parameters, constrained_positive = None, rotations = None, T = 1.0, tol = 1e-3, maxN = 12, N = None, stdMin = 0):
         self.C = stiffness_matrix
         self.dC = {}
         self.density = [density] if numpy.isscalar(density) else density
@@ -41,6 +41,7 @@ class HMC():
         self.initial_conditions = parameters
         self.labels = {}
         self.maxN = maxN
+        self.stdMin = stdMin
 
         if N is not None:
             print "WARNING: Parameter 'N' to HMC.__init__ is defunct. It is ignored in favor of maxN"
@@ -115,7 +116,13 @@ class HMC():
             #self.current_qr[r, :] /= numpy.linalg.norm(self.current_qr[r, :])
 
         for p, i in self.order.items():
-            self.current_q[i] = numpy.log(initial_conditions[p]) if p in self.constrained_positive else initial_conditions[p]
+            if p in self.constrained_positive:
+                if p == 'std':
+                    self.current_q[i] = numpy.log(initial_conditions[p] - self.stdMin)
+                else:
+                    self.current_q[i] = numpy.log(initial_conditions[p])
+            else:
+                self.current_q[i] = initial_conditions[p]
 
         self.accepts.append(self.current_q)
 
@@ -136,7 +143,11 @@ class HMC():
             freqsTmp = []
 
             for p in qdict:
-                qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
+                if p in self.constrained_positive:
+                    if p == 'std':
+                        qdict[p] = numpy.exp(qdict[p]) + self.stdMin
+                    else:
+                        qdict[p] = numpy.exp(qdict[p])
 
             for s in range(self.S):
                 C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
@@ -226,7 +237,10 @@ class HMC():
 
         for p in qdict:
             if p in self.constrained_positive:
-                qdict[p] = numpy.exp(qdict[p])
+                if p == 'std':
+                    qdict[p] = numpy.exp(qdict[p]) + self.stdMin
+                else:
+                    qdict[p] = numpy.exp(qdict[p])
 
         std = qdict['std']
 
@@ -299,7 +313,7 @@ class HMC():
             dlpdstd = 0.0
             logp = 0.0
 
-            for i in range(min(self.resolution, self.modes[s])):
+            for i in range(1, min(self.resolution, self.modes[s])):
                 dlpdfreqs[i] = (self.data[s][i] - freqs[r][i]) / (std ** 2)
                 dlpdstd += ((-(std ** 2) + (self.data[s][i] - freqs[r][i]) ** 2) / (std ** 3))
                 logp += (0.5 * (-((self.data[s][i] - freqs[r][i]) **2 / (std**2)) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
@@ -309,7 +323,8 @@ class HMC():
             #    dlpdstd += ((-((i + 1)**2 * std ** 2) + (self.data[s][i] - freqs[r][i]) ** 2) / ((i + 1)**2 * std ** 3))
             #    logp += (0.5 * (-((self.data[s][i] - freqs[r][i]) **2 / ((i + 1)**2 * std**2)) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
 
-            dlpdstd = dlpdstd * qdict['std'] + 1
+            dlpdstd = dlpdstd * (qdict['std'] - self.stdMin) + 1
+
             logp_total += logp + sum([q[self.order[p]] for p in self.constrained_positive])
 
             dlpdl = dlpdfreqs * dfreqsdl[r]
@@ -320,7 +335,10 @@ class HMC():
 
                 dlpdp = dlpdl.dot(dldps[(p, r)])
 
-                dlogpdq_total[i] += (dlpdp * qdict[p] + 1) if p in self.constrained_positive else dlpdp
+                if p in self.constrained_positive:
+                    dlogpdq_total[i] += (dlpdp * qdict[p] + 1)
+                else:
+                    dlogpdq_total[i] += dlpdp
 
             if self.rotations:
                 dlogpdqr_total[r, 0] += dlpdl.dot(dldps[("w", r)])
@@ -337,6 +355,7 @@ class HMC():
 
     def set_timestepping(self, epsilon = 0.0001, L = 50, param_scaling = None):
         self.epsilon = epsilon
+        self.epsilon_rotations = epsilon
 
         if param_scaling != None:
             self.epsilon = numpy.ones(len(self.order)) * self.epsilon
@@ -351,6 +370,7 @@ class HMC():
             raise Exception("Must call 'rus.HMC.set_timestepping' before 'rus.HMC.sample'")
 
         epsilon = self.epsilon
+        epsilon_rotations = self.epsilon_rotations
         L = self.L
 
         step = 0
@@ -371,7 +391,7 @@ class HMC():
             p = p - epsilon * gradU / 2
 
             if self.rotations:
-                pr = pr - epsilon * gradUr / 2
+                pr = pr - epsilon_rotations * gradUr / 2
 
                 for r in range(self.R):
                     pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
@@ -387,8 +407,8 @@ class HMC():
                     m1 = numpy.array([[1.0, 0.0],
                                       [0.0, 1 / alpha]])
 
-                    m2 = numpy.array([[numpy.cos(alpha * epsilon), -numpy.sin(alpha * epsilon)],
-                                      [numpy.sin(alpha * epsilon), numpy.cos(alpha * epsilon)]])
+                    m2 = numpy.array([[numpy.cos(alpha * epsilon_rotations), -numpy.sin(alpha * epsilon_rotations)],
+                                      [numpy.sin(alpha * epsilon_rotations), numpy.cos(alpha * epsilon_rotations)]])
 
                     m3 = numpy.array([[1.0, 0.0],
                                       [0.0, alpha]])
@@ -407,7 +427,7 @@ class HMC():
                     p = p - epsilon * gradU
 
                     if self.rotations:
-                        pr = pr - epsilon * gradUr
+                        pr = pr - epsilon_rotations * gradUr
 
                         for r in range(self.R):
                             pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
@@ -422,7 +442,7 @@ class HMC():
             p = p - epsilon * gradU / 2
 
             if self.rotations:
-                pr = pr - epsilon * gradUr / 2
+                pr = pr - epsilon_rotations * gradUr / 2
 
                 for s in range(self.R):
                     pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
@@ -480,7 +500,16 @@ class HMC():
         llist = []
         for p, name in self.labels.items():
             if p in self.order:
-                llist.append("{0} : {1:0.{2}f}".format(name, numpy.exp(q[self.order[p]]) if p in self.constrained_positive else q[self.order[p]], precision))
+                val = None
+                if p in self.constrained_positive:
+                    if p == 'std':
+                        val = numpy.exp(q[self.order[p]]) + self.stdMin
+                    else:
+                        val = numpy.exp(q[self.order[p]])
+                else:
+                    val = q[self.order[p]]
+
+                llist.append("{0} : {1:0.{2}f}".format(name, val, precision))
 
         out.append("{{ {0} }}".format(", ".join(llist)))
 
@@ -499,7 +528,11 @@ class HMC():
         qr = self.current_qr
 
         for p in qdict:
-            qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
+            if p in self.constrained_positive:
+                if p == 'std':
+                    qdict[p] = numpy.exp(qdict[p]) + self.stdMin
+                else:
+                    qdict[p] = numpy.exp(qdict[p])
 
         for s in range(self.S):
             C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
@@ -541,7 +574,11 @@ class HMC():
                 qdict = self.qdict(q)
 
                 for p in qdict:
-                    qdict[p] = numpy.exp(qdict[p]) if p in self.constrained_positive else qdict[p]
+                    if p in self.constrained_positive:
+                        if p == 'std':
+                            qdict[p] = numpy.exp(qdict[p]) + self.stdMin
+                        else:
+                            qdict[p] = numpy.exp(qdict[p])
 
                 C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
 
@@ -603,6 +640,7 @@ class HMC():
 
         printOrder = []
         do_exp = []
+        is_std = []
 
         if lastN == -1:
             qs = self.qs
@@ -621,11 +659,21 @@ class HMC():
                 else:
                     do_exp.append(False)
 
-        for i, do_exp_ in zip(printOrder, do_exp):
+                if p == 'std':
+                    is_std.append(True)
+                else:
+                    is_std.append(False)
+
+        for i, do_exp_, is_std_ in zip(printOrder, do_exp, is_std):
             tmp_samples = []
 
             for q in qs:
-                tmp_samples.append(numpy.exp(q[i]) if do_exp_ else q[i])
+                if is_std_:
+                    tmp_samples.append(numpy.exp(q[i]) + self.stdMin)
+                elif do_exp_:
+                    tmp_samples.append(numpy.exp(q[i]))
+                else:
+                    tmp_samples.append(q[i])
 
             samples.append(tmp_samples)
 
