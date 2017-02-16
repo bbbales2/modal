@@ -6,6 +6,7 @@ pyximport.install()#reload_support = True)
 import polybasisqu
 import scipy.linalg
 import numbers
+import traceback
 try:
     import matplotlib.pyplot as plt
     matplotlib_available = True
@@ -375,94 +376,106 @@ class HMC():
 
         step = 0
         while step < steps or steps == -1:
-            q = self.current_q.copy()
-            qr = self.current_qr.copy()
+            valueError = False
+            try:
+                q = self.current_q.copy()
+                qr = self.current_qr.copy()
 
-            p = numpy.random.randn(len(q)) # independent standard normal variates
-            pr = numpy.random.randn(*qr.shape)
-
-            for r in range(self.R):
-                pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
-
-            current_p = p.copy()
-            current_pr = pr.copy()
-            # Make a half step for momentum at the beginning
-            U, gradU, gradUr = self.UgradU(q, qr)
-            p = p - epsilon * gradU / 2
-
-            if self.rotations:
-                pr = pr - epsilon_rotations * gradUr / 2
+                p = numpy.random.randn(len(q)) # independent standard normal variates
+                pr = numpy.random.randn(*qr.shape)
 
                 for r in range(self.R):
                     pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
 
-            # Alternate full steps for position and momentum
-            for i in range(L):
-                # Make a full step for the position
-                q = q + epsilon * p
+                current_p = p.copy()
+                current_pr = pr.copy()
 
-                for r in range(self.R):
-                    alpha = numpy.linalg.norm(pr[r])
+                # Evaluate potential and kinetic energies at start
+                UC, _, _ = self.UgradU(self.current_q, self.current_qr)
+                current_U = UC
+                current_K = sum(current_p ** 2) / 2 + (current_pr ** 2).sum() / 2
 
-                    m1 = numpy.array([[1.0, 0.0],
-                                      [0.0, 1 / alpha]])
+                # Make a half step for momentum at the beginning
+                U, gradU, gradUr = self.UgradU(q, qr)
+                p = p - epsilon * gradU / 2
 
-                    m2 = numpy.array([[numpy.cos(alpha * epsilon_rotations), -numpy.sin(alpha * epsilon_rotations)],
-                                      [numpy.sin(alpha * epsilon_rotations), numpy.cos(alpha * epsilon_rotations)]])
+                if self.rotations:
+                    pr = pr - epsilon_rotations * gradUr / 2
 
-                    m3 = numpy.array([[1.0, 0.0],
-                                      [0.0, alpha]])
+                    for r in range(self.R):
+                        pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
 
-                    xv = numpy.array([qr[r], pr[r]]).T.dot(m1.dot(m2.dot(m3)))
+                # Alternate full steps for position and momentum
+                for i in range(L):
+                    # Make a full step for the position
+                    q = q + epsilon * p
 
-                    qr[r] = xv[:, 0]
-                    pr[r] = xv[:, 1]
+                    for r in range(self.R):
+                        alpha = numpy.linalg.norm(pr[r])
 
-                    qr[r] /= numpy.linalg.norm(qr[r])
+                        m1 = numpy.array([[1.0, 0.0],
+                                          [0.0, 1 / alpha]])
 
-                #q[-3:] = inv_rotations.qu2eu(symmetry.Symmetry.Cubic.fzQuat(quaternion.Quaternion(inv_rotations.eu2qu(q[-3:]))))
-                # Make a full step for the momentum, except at end of trajectory
-                if i != L - 1:
-                    U, gradU, gradUr = self.UgradU(q, qr)
-                    p = p - epsilon * gradU
+                        m2 = numpy.array([[numpy.cos(alpha * epsilon_rotations), -numpy.sin(alpha * epsilon_rotations)],
+                                          [numpy.sin(alpha * epsilon_rotations), numpy.cos(alpha * epsilon_rotations)]])
 
-                    if self.rotations:
-                        pr = pr - epsilon_rotations * gradUr
+                        m3 = numpy.array([[1.0, 0.0],
+                                          [0.0, alpha]])
 
-                        for r in range(self.R):
-                            pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
+                        xv = numpy.array([qr[r], pr[r]]).T.dot(m1.dot(m2.dot(m3)))
 
-                if debug:
-                    print "New q: {0}".format(self.print_q(q, qr))
-                    print "H (constant or decreasing): ", U + sum(p ** 2) / 2, U, sum(p **2) / 2.0
-                    print ""
+                        qr[r] = xv[:, 0]
+                        pr[r] = xv[:, 1]
 
-            U, gradU, gradUr = self.UgradU(q, qr)
-            # Make a half step for momentum at the end.
-            p = p - epsilon * gradU / 2
+                        qr[r] /= numpy.linalg.norm(qr[r])
 
-            if self.rotations:
-                pr = pr - epsilon_rotations * gradUr / 2
+                    #q[-3:] = inv_rotations.qu2eu(symmetry.Symmetry.Cubic.fzQuat(quaternion.Quaternion(inv_rotations.eu2qu(q[-3:]))))
+                    # Make a full step for the momentum, except at end of trajectory
+                    if i != L - 1:
+                        U, gradU, gradUr = self.UgradU(q, qr)
+                        p = p - epsilon * gradU
 
-                for s in range(self.R):
-                    pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
+                        if self.rotations:
+                            pr = pr - epsilon_rotations * gradUr
 
-            # Negate momentum at end of trajectory to make the proposal symmetric
-            p = -p
-            pr = -pr
-            # Evaluate potential and kinetic energies at start and end of trajectory
-            UC, _, _ = self.UgradU(self.current_q, self.current_qr)
-            current_U = UC
-            current_K = sum(current_p ** 2) / 2 + (current_pr ** 2).sum() / 2
-            proposed_U = U
-            proposed_K = sum(p ** 2) / 2 + (pr ** 2).sum() / 2
+                            for r in range(self.R):
+                                pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
 
-            # Accept or reject the state at end of trajectory, returning either
-            # the position at the end of the trajectory or the initial position
-            dQ = current_U - proposed_U + current_K - proposed_K
+                    if debug:
+                        print "New q: {0}".format(self.print_q(q, qr))
+                        print "H (constant or decreasing): ", U + sum(p ** 2) / 2, U, sum(p **2) / 2.0
+                        print ""
+
+                U, gradU, gradUr = self.UgradU(q, qr)
+                # Make a half step for momentum at the end.
+                p = p - epsilon * gradU / 2
+
+                if self.rotations:
+                    pr = pr - epsilon_rotations * gradUr / 2
+
+                    for s in range(self.R):
+                        pr[r] -= numpy.outer(qr[r], qr[r]).dot(pr[r])
+
+                # Negate momentum at end of trajectory to make the proposal symmetric
+                p = -p
+                pr = -pr
+                # Evaluate potential and kinetic energies at end
+                proposed_U = U
+                proposed_K = sum(p ** 2) / 2 + (pr ** 2).sum() / 2
+
+                # Accept or reject the state at end of trajectory, returning either
+                # the position at the end of the trajectory or the initial position
+                dQ = current_U - proposed_U + current_K - proposed_K
+            except ValueError as e:
+                valueError = True
+                traceback.print_exc()
+                print "ValueError detected in iteration, *usually* this means timestep is too big and parameters blew up. Rejecting sample"
+                dQ = numpy.nan
+                proposed_U = numpy.nan
+                proposed_K = numpy.nan
 
             with printoptions(precision = 5):
-                if numpy.random.rand() < min(1.0, numpy.exp(dQ)):
+                if numpy.random.rand() < min(1.0, numpy.exp(dQ)) and not valueError:
                     self.current_q = q # accept
                     self.current_qr = qr
 
@@ -484,7 +497,7 @@ class HMC():
                 self.qrs.append(self.current_qr.copy())
 
                 if not silent or debug:
-                    print "Energy change ({0} samples, {1} accepts): ".format(len(self.qs), len(self.accepts)), min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
+                    print "Energy change ({0} samples, {1} accepts): ".format(len(self.qs), len(self.accepts)), 0.0 if numpy.isnan(dQ) else min(1.0, numpy.exp(dQ)), dQ, current_U, proposed_U, current_K, proposed_K
 
             step += 1
 
