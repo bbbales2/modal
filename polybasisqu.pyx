@@ -252,10 +252,14 @@ cpdef inline numpy.ndarray[numpy.double_t, ndim = 4] Cvoigt(numpy.ndarray[numpy.
                     C[k, l, n, m] = Ch[i, j]
     return C
 
-cpdef buildKM(numpy.ndarray[numpy.double_t, ndim = 2] Ch, numpy.ndarray[numpy.double_t, ndim = 4] dp, numpy.ndarray[numpy.double_t, ndim = 2] pv, double density):
-    cdef numpy.ndarray[numpy.double_t, ndim = 6] dpe
-    cdef numpy.ndarray[numpy.double_t, ndim = 4] C, Kt, Mt
-    cdef numpy.ndarray[numpy.double_t, ndim = 2] K, M
+import cython
+from cython cimport parallel
+
+cpdef buildKM(double[:, :] Ch, double[:, :, :, :] dp, double[:, :] pv, double density):
+    cdef double[:, :, :, :, :, :] dpe
+    cdef double[:, :, :, :] C, Kt, Mt
+    cdef double total
+    cdef double[:, :] K, M
     cdef int i, j, k, l, n, m, N
 
     N = dp.shape[0]
@@ -272,15 +276,19 @@ cpdef buildKM(numpy.ndarray[numpy.double_t, ndim = 2] Ch, numpy.ndarray[numpy.do
 
     Kt = numpy.zeros((N, 3, N, 3))
 
-    for n in range(N):
-        for m in range(N):
-            for i in range(3):
-                for k in range(3):
-                    for j in range(3):
-                        for l in range(3):
-                            Kt[n, i, m, k] += C[i, j, k, l] * dp[n, m, j, l]
+    with nogil, parallel.parallel():
+        for n in parallel.prange(N, schedule = 'static'):
+            for m in range(N):
+                for i in range(3):
+                    for k in range(3):
+                        total = 0.0
+                        for j in range(3):
+                            for l in range(3):
+                                total = total + C[i, j, k, l] * dp[n, m, j, l]
+                        Kt[n, i, m, k] = total
 
-    K = Kt.reshape((N * 3, N * 3))
+
+    K = numpy.reshape(Kt, (N * 3, N * 3))
 
     Mt = numpy.zeros((dp.shape[0], 3, dp.shape[0], 3))
     for n in range(N):
@@ -289,9 +297,9 @@ cpdef buildKM(numpy.ndarray[numpy.double_t, ndim = 2] Ch, numpy.ndarray[numpy.do
             Mt[n, 1, m, 1] = density * pv[n, m]
             Mt[n, 2, m, 2] = density * pv[n, m]
 
-    M = Mt.reshape(3 * pv.shape[0], 3 * pv.shape[0])
+    M = numpy.reshape(Mt, (3 * pv.shape[0], 3 * pv.shape[0]))
 
-    return K, M
+    return numpy.array(K), numpy.array(M)
 
 #%%
 #

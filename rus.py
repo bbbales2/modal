@@ -257,12 +257,18 @@ class HMC():
         dfreqsdl = {}
 
         dldps = {}
+        #timebuildRot = 0.0
+        #timebuildKM = 0.0
+        #timesolve = 0.0
         if self.rotations:
             for s, r in enumerate(self.rotations):
                 w, x, y, z = qr[r]
 
+                #tmp = time.time()
                 Cr, dCdw, dCdx, dCdy, dCdz, Kr = polybasisqu.buildRot(C, w, x, y, z)
+                #timebuildRot += time.time() - tmp
 
+                #tmp = time.time()
                 dKdws, _ = polybasisqu.buildKM(dCdw, self.dp[s], self.pv[s], self.density[s])
                 dKdxs, _ = polybasisqu.buildKM(dCdx, self.dp[s], self.pv[s], self.density[s])
                 dKdys, _ = polybasisqu.buildKM(dCdy, self.dp[s], self.pv[s], self.density[s])
@@ -270,8 +276,11 @@ class HMC():
 
                 # Likelihood p(data | params)
                 K, M = polybasisqu.buildKM(Cr, self.dp[s], self.pv[s], self.density[s])
+                #timebuildKM += time.time() - tmp
 
+                #tmp = time.time()
                 eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + self.resolution - 1))#max(self.modes)
+                #timesolve += time.time() - tmp
 
                 freqs[r] = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
                 dfreqsdl[r] = 0.5e11 / (numpy.sqrt(eigs * 1e11) * numpy.pi * 2000)
@@ -303,6 +312,10 @@ class HMC():
                 dKdp, _ = polybasisqu.buildKM(numpy.array(self.dC[p].evalf(subs = qdict)).astype('float'), self.dp[0], self.pv[0], self.density[0])
 
                 dldps[(p, 0)] = numpy.array([evecs[:, j].T.dot(dKdp.dot(evecs[:, j])) for j in range(evecs.shape[1])])
+
+        #print "Build rot: ", timebuildRot
+        #print "Build KM: ", timebuildKM
+        #print "Solve: ", timesolve
 
         for s in range(self.S):
             if self.rotations:
