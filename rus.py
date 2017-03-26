@@ -587,7 +587,7 @@ class HMC():
                 if i < len(self.data[s]):
                     print "{0:0.{2}f}, {1:0.{2}f}".format(freq, self.data[s][i], precision)
 
-    def posterior_predictive(self, lastN = 200, precision = 5, plot = True, which_samples = None):
+    def posterior_predictive(self, lastN = 200, precision = 5, plot = True, which_samples = None, raw = False):
         lastN = min(lastN, len(self.qs))
 
         posterior_predictive = numpy.zeros((max(self.modes), lastN, self.S))
@@ -654,6 +654,9 @@ class HMC():
                 print "{0:8s} {1:10s} {2:10s} {3:10s}".format("Outside", "2.5th %", "measured", "97.5th %")
                 for ll, meas, rr in zip(ppl, self.data[s], ppr):
                     print "{0:8s} {1:10.{4}f} {2:10.{4}f} {3:10.{4}f}".format("*" if (meas < ll or meas > rr) else " ", ll, meas, rr, precision)
+
+        if raw:
+            return posterior_predictive
 
     def save(self, filename):
         f = open(filename, 'w')

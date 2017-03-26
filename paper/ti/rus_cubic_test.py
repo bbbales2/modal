@@ -124,7 +124,12 @@ hmc.sample(debug = True)#False)#True)
 #%%
 hmc.print_current()
 #%%
-hmc.posterior_predictive(plot = False, lastN = 200)
+posterior = hmc.posterior_predictive(plot = False, lastN = 200, raw = True).reshape((30, 200))
+#%%
+posterior = posterior.reshape(-1, 200)
+#%%
+for r, datap, mean, stdd in zip(range(1, 31), data, posterior.mean(axis = 1), posterior.std(axis = 1)):
+    print "{0} {1} {2:.2f} {3:.2f}".format(r, datap, mean, stdd)
 #%%
 hmc.posterior_predictive(plot = True, lastN = 200)
 plt.title('Posterior predictive', fontsize = 72)

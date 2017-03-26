@@ -197,7 +197,10 @@ hmc.sample(debug = True)#False)#True)
 #%%
 hmc.print_current()
 #%%
-hmc.posterior_predictive(plot = False)
+posterior = hmc.posterior_predictive(plot = False, raw = True)
+#%%
+for r, datap, mean, stdd in zip(range(1, 31), data, posterior.mean(axis = 1), posterior.std(axis = 1)):
+    print "{0} {1} {2:.2f} {3:.2f}".format(r, datap, mean, stdd)
 #%%
 hmc.save('/home/bbales2/modal/paper/cmsx4/qs_norot.csv')
 #%%
