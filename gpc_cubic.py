@@ -98,14 +98,35 @@ reload(gpc)
 
 func2 = lambda c11, c44 : func(c11, 1.0, c44)
 
-minc11 = 1.5#1.6
+minc11 = 1.0#1.6
 maxc11 = 2.0#1.8
+mina = 1.0
+maxa = 1.2
 minc44 = 0.4#0.448
-maxc44 = 0.6#0.452
+maxc44 = 0.8#0.452
 
-hd = gpc.GPC(5, func2, [('u', (minc11, maxc11), 5),
+hd = gpc.GPC(5, func, [('n', (2.0, 0.5), 3),
+                        ('u', (mina, maxa), 3),
                         ('u', (minc44, maxc44), 5)])
 
+#%%
+
+d = 0.000001
+p = numpy.array([1.7, 1.0, 0.6])
+z = hd.approx(*p)
+for i in range(3):
+    p_ = p.copy()
+
+    p_[i] += d
+
+    for z1, z2 in zip(hd.approxd(i, *p), (hd.approx(*p_) - z) / d):
+        print z1, z2
+    print ""
+#%%
+
+hd.approx(1.7, 0.6) - func(1.7, 1.0, 0.6)
+#%%
+hd.approxd(0, 1.7, 0.6)
 #%%
 for r in range(5, len(data)):
     def L(c11, c44):
