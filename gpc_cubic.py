@@ -18,7 +18,7 @@ reload(rus)
 #%%
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 12
+N = 14
 
 ## Dimensions for TF-2
 X = 0.007753
@@ -85,12 +85,23 @@ def func(c11, anisotropic, c44):
                      [0, 0, 0, 0, 0, c44]])
 
     K, M = polybasisqu.buildKM(C, dp, pv, density)
-    eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(data) - 1))
+    print K.shape
+    eigs, evecs = scipy.linalg.eigh(K.astype('float'), M.astype('float'), eigvals = (6, 6 + len(data) - 1))
 
     return numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
 #%%
 
-func(2.0, 1.0, 1.0)
+func(5.0, 6.0, 10.0)
+
+#%%
+xs = numpy.arange(0.1, 1.5, 0.1)
+
+outs = []
+
+for x in xs:
+    outs.append(func(2.0, x, 0.46))
+
+outs = numpy.array(outs)
 
 #%%
 
