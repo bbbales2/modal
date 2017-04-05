@@ -98,10 +98,10 @@ accepts.append(current_q)
 #   L is the number of timesteps to take -- use this if samples in the traceplots don't look random
 #   epsilon is the timestep -- make this small enough so that pretty much all the samples are being accepted, but you
 #       want it large enough that you can keep L ~ 50 -> 100 and still get independent samples
-L = 50
+L = 100
 # start epsilon at .0001 and try larger values like .0005 after running for a while
 # epsilon is timestep, we want to make as large as possibe, wihtout getting too many rejects
-epsilon = 0.0005
+epsilon = 0.0001
 
 # Set this to true to debug the L and eps values
 debug = False
@@ -137,6 +137,15 @@ def func(c11, anisotropic, c44):
     eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + len(data) - 1))
 
     return numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+
+def Ul(q):
+    c11, anisotropic, c44, std = q
+
+    e = func(c11, anisotropic, c44)
+
+    logp = -sum(0.5 * (-((e - data) **2 / std**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
+
+    return logp
 
 Xs = []
 Ys = []
@@ -178,7 +187,7 @@ data {
   int<lower=1> L;
   matrix<lower=0.0>[N, 3] x;
   matrix<lower=0.0>[N, L] y;
-  //real yd;
+  vector<lower=0.0>[L] yd;
 }
 
 transformed data {
@@ -193,11 +202,11 @@ parameters {
   vector<lower=0>[3] inv_rho_sq;
   real<lower=0> sigma_sq;
 
-  /*real<lower = 0.0> dsigma;
+  real<lower = 0.0> dsigma;
 
-  real c11;
-  real a;
-  real c44;*/
+  real<lower = 1.0, upper = 4.0> c11;
+  real<lower = 0.5, upper = 2.0> a;
+  real<lower = 0.1, upper = 2.0> c44;
 }
 
 transformed parameters {
@@ -207,7 +216,8 @@ transformed parameters {
 
 model {
   matrix[N, N] Sigma;
-  //row_vector[N] Ks;
+  row_vector[N] Ks;
+  real Kv;
 
   // off-diagonal elements
   for (i in 1:(N-1)) {
@@ -223,21 +233,23 @@ model {
   for (k in 1:N)
     Sigma[k, k] = eta_sq + sigma_sq; // + jitter
 
-  /*for(k in 1:N)
+  for(k in 1:N)
     Ks[k] = eta_sq * exp(-rho_sq[1] * pow(x[k, 1] - c11, 2)
-                         -rho_sq[2] * pow(x[k, 2] - a, 2)
-                         -rho_sq[3] * pow(x[k, 3] - c44, 2));*/
+                      -rho_sq[2] * pow(x[k, 2] - a, 2)
+                      -rho_sq[3] * pow(x[k, 3] - c44, 2));
+
+  Kv = sqrt(eta_sq + sigma_sq - Ks * (Sigma \ Ks'));
 
   eta_sq ~ cauchy(0, 1000.0);
   inv_rho_sq ~ cauchy(0, 10.0);
   sigma_sq ~ cauchy(0, 10.0);
 
-  for(i in 1:L)
-    y[:, i] ~ multi_normal(z, Sigma);
+  //for(i in 1:L)
+  y[:, 20] ~ multi_normal(z, Sigma);
 
-  //dsigma ~ cauchy(0.0, 10.0);
+  dsigma ~ cauchy(0.0, 10.0);
 
-  //yd ~ normal(Ks * (Sigma \ y), dsigma);
+  yd ~ normal(Ks * (Sigma \ y), dsigma);
 
   //y ~ normal(mu, );
 }
@@ -259,9 +271,16 @@ fit = sm.sampling(data = {
     "N" : S,
     "L" : Ys.shape[1],
     "x" : Xs,
-    "y" : Ys,
-    "yd" : 109.0
+    "y" : Ys[:, :],
+    "yd" : data
 })
+
+print fit
+
+etasq = numpy.median(fit.extract()['eta_sq'])
+rho1, rho2, rho3 = numpy.median(fit.extract()['rho_sq'], axis = 0)
+sigmasq = numpy.median(fit.extract()['sigma_sq'])
+
 #%%
 def cov(Xs, Ys):
     Xs = numpy.array(Xs)
@@ -313,6 +332,11 @@ data {
   matrix<lower=0.0>[N, 3] x;
   matrix<lower=0.0>[N, L] y;
   vector<lower=0.0>[L] yd;
+  real<lower=0.0> etasq;
+  real<lower=0.0> sigmasq;
+  real<lower=0.0> rho1;
+  real<lower=0.0> rho2;
+  real<lower=0.0> rho3;
 }
 
 transformed data {
@@ -328,15 +352,15 @@ transformed data {
   // off-diagonal elements
   for (i in 1:(N-1)) {
     for (j in (i+1):N) {
-      Sigma[i, j] = 9303.9 * exp(-0.82 * pow(x[i, 1] - x[j, 1], 2)
-                                 -5.38 * pow(x[i, 2] - x[j, 2], 2)
-                                 -1.09 * pow(x[i, 3] - x[j, 3], 2));
+      Sigma[i, j] = etasq * exp(-rho1 * pow(x[i, 1] - x[j, 1], 2)
+                              -rho2 * pow(x[i, 2] - x[j, 2], 2)
+                              -rho3 * pow(x[i, 3] - x[j, 3], 2));
       Sigma[j, i] = Sigma[i, j];
     }
   }
 
   for (k in 1:N)
-    Sigma[k, k] = 9303.9 + 30.0; // + jitter
+    Sigma[k, k] = etasq + sigmasq; // + jitter
 
   Kiy = Sigma \ y;
   //L = cholesky_decompose(Sigma);
@@ -358,11 +382,11 @@ model {
   // diagonal elements
 
   for(k in 1:N)
-    Ks[k] = 9303.9 * exp(-0.82 * pow(x[k, 1] - c11, 2)
-                         -5.38 * pow(x[k, 2] - a, 2)
-                         -1.09 * pow(x[k, 3] - c44, 2));
+    Ks[k] = etasq * exp(-rho1 * pow(x[k, 1] - c11, 2)
+                      -rho2 * pow(x[k, 2] - a, 2)
+                      -rho3 * pow(x[k, 3] - c44, 2));
 
-  Kv = sqrt(9303.9 + 30.0 - Ks * (Sigma \ Ks'));
+  Kv = sqrt(etasq + sigmasq - Ks * (Sigma \ Ks'));
 
   dsigma ~ cauchy(0.0, 10.0);
 
@@ -383,11 +407,11 @@ generated quantities {
       // diagonal elements
 
       for(k in 1:N)
-        Ks[k] = 9303.9 * exp(-0.82 * pow(x[k, 1] - c11, 2)
-                             -5.38 * pow(x[k, 2] - a, 2)
-                             -1.09 * pow(x[k, 3] - c44, 2));
+        Ks[k] = etasq * exp(-rho1 * pow(x[k, 1] - c11, 2)
+                          -rho2 * pow(x[k, 2] - a, 2)
+                          -rho3 * pow(x[k, 3] - c44, 2));
 
-      Kv = sqrt(9303.9 + 30.0 - Ks * (Sigma \ Ks'));
+      Kv = sqrt(etasq + sigmasq - Ks * (Sigma \ Ks'));
     }
 }
 """
@@ -408,7 +432,12 @@ fit = sm2.sampling(data = {
     "L" : Ys.shape[1],
     "x" : Xs,
     "y" : Ys,
-    "yd" : data
+    "yd" : data,
+    "etasq" : etasq,
+    "sigmasq" : sigmasq,
+    "rho1" : rho1,
+    "rho2" : rho2,
+    "rho3" : rho3
 })
 
 print fit
@@ -428,8 +457,65 @@ plt.xlabel('a')
 plt.ylabel('c44')
 plt.show()
 #%%
+L = Ys.shape[1]
 
+Sigma = numpy.zeros((S, S))
+Kiy = numpy.zeros((S, L))
 
+for i in range(S - 1):
+    for j in range(i + 1, S):
+      Sigma[i, j] = etasq * numpy.exp(-rho1 * (Xs[i, 0] - Xs[j, 0])**2 - rho2 * (Xs[i, 1] - Xs[j, 1])**2 - rho3 * (Xs[i, 2] - Xs[j, 2])**2)
+      Sigma[j, i] = Sigma[i, j]
+
+for k in range(S):
+    Sigma[k, k] = etasq + sigmasq
+
+Kiy = numpy.linalg.solve(Sigma, Ys)
+
+def UgradU(q):
+    c11, anisotropic, c44, std = q
+
+    Ks = numpy.zeros(S)
+    dKsdc11 = numpy.zeros(S)
+    dKsda = numpy.zeros(S)
+    dKsdc44 = numpy.zeros(S)
+    for k in range(S):
+        Ks[k] = etasq * numpy.exp(-rho1 * (Xs[k, 0] - c11)**2 -rho2 * (Xs[k, 1] - anisotropic)**2 - rho3 * (Xs[k, 2] - c44)**2)
+        dKsdc11[k] = 2 * rho1 * (Xs[k, 0] - c11) * Ks[k]
+        dKsda[k] = 2 * rho2 * (Xs[k, 1] - anisotropic) * Ks[k]
+        dKsdc44[k] = 2 * rho3 * (Xs[k, 2] - c44) * Ks[k]
+
+    e = Ks.dot(Kiy)
+    dedc11 = dKsdc11.dot(Kiy)
+    deda = dKsda.dot(Kiy)
+    dedc44 = dKsdc44.dot(Kiy)
+
+    dlpde = (data - e) / std ** 2
+    dlpdstd = sum((-std ** 2 + (e - data) **2) / std ** 3)
+
+    dlpdc11 = dlpde.dot(dedc11)
+    dlpda = dlpde.dot(deda)
+    dlpdc44 = dlpde.dot(dedc44)
+
+    logp = sum(0.5 * (-((e - data) **2 / std**2) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
+
+    return -logp, -numpy.array([dlpdc11, dlpda, dlpdc44, dlpdstd])
+
+#%%
+d = 0.00001
+q = numpy.array([1.6, 1.0, 0.7, 1.0])
+
+nlogp, dnlogp = UgradU(q)
+
+for i in range(3):
+    q_ = q.copy()
+
+    q_[i] += d
+
+    nlogp_, _ = UgradU(q_)
+
+    print dnlogp[i], (nlogp_ - nlogp) / d
+#%%
 import polybasisqu
 import sys
 sys.path.append('/home/bbales2/gpc')
@@ -447,8 +533,6 @@ hd = gpc.GPC(5, func2, [('n', (2.0, 0.5), 3),
 
 def UgradU(q):
     c11, anisotropic, c44, std = q
-
-    anisotropic = 1.0
 
     try:
         e = hd.approx(c11, anisotropic, c44)
@@ -548,7 +632,10 @@ while True:
 
     logps.append(UC)
 
-    if numpy.random.rand() < min(1.0, numpy.exp(dQ)) and not numpy.isnan(proposed_U):
+    dQ2 = Ul(current_q) - Ul(q)
+    print dQ, dQ2
+
+    if numpy.random.rand() < min(1.0, numpy.exp(dQ)) and not numpy.isnan(proposed_U) and numpy.random.rand() < min(1.0, numpy.exp(dQ2)):
         current_q = q # accept
 
         accepts.append(len(qs) - 1)
