@@ -21,13 +21,13 @@ Z = 0.019976#0.013199
 #Sample density
 density = 8700.0#4401.695921 #Ti-64-TF2
 
-c110 = 2.0
-anisotropic0 = 2.0
-c440 = 1.0
+c110 = 2.493
+anisotropic0 = 2.865
+c440 = 1.314
 c120 = -(c440 * 2.0 / anisotropic0 - c110)
 
 # Standard deviation around each mode prediction
-std0 = 5.0
+std0 = 3.0
 
 # Ti-64-TF2 Test Data
 #data = numpy.array([109.076,
@@ -180,12 +180,14 @@ hmc = rus.HMC(density = density, X = X, Y = Y, Z = Z,
               parameters = { c11 : c110, anisotropic : anisotropic0, c44 : c440, 'std' : std0 }, # Parameters
               rotations = True,
               T = 1.0,
-              stdMin = 0.0)
+              stdMin = 0.0,
+              tol = 1e-4)
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
 hmc.set_timestepping(epsilon = epsilon, L = 50)
 hmc.print_current()
-hmc.sample(steps = 5, debug = True)
+#hmc.sample(steps = 1, debug = True)
+print hmc.resolutions
 #%%
 hmc.set_timestepping(epsilon = epsilon * 4.0, L = 50, param_scaling = { 'std' : 20.0 })
 hmc.sample(debug = False)#False)#True)
@@ -197,7 +199,7 @@ hmc.sample(debug = True)#False)#True)
 #%%
 hmc.print_current()
 #%%
-posterior = hmc.posterior_predictive(plot = False, raw = True)
+posterior = hmc.posterior_predictive()#plot = False, raw = True)
 #%%
 for r, datap, mean, stdd in zip(range(1, 31), data, posterior.mean(axis = 1), posterior.std(axis = 1)):
     print "{0} {1} {2:.2f} {3:.2f}".format(r, datap, mean, stdd)
@@ -225,7 +227,7 @@ for name, data1 in zip(*hmc.format_samples()):
     plt.show()
 #%%
 for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-4000:]
+    data1 = data1[-50:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.4f}, $\sigma$ = {2:0.4f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)
@@ -267,3 +269,50 @@ for name, data1 in zip(['angle', 'kx', 'ky', 'kz'], data.T):
     plt.tick_params(axis='x', which='major', labelsize=16)
     plt.show()
 #%%
+import polybasisqu
+
+def print_current(self, precision = 5):
+    qdict = self.qdict(self.current_q)
+    qr = self.current_qr
+
+    for p in qdict:
+        if p in self.constrained_positive:
+            if p == 'std':
+                qdict[p] = numpy.exp(qdict[p]) + self.stdMin
+            else:
+                qdict[p] = numpy.exp(qdict[p])
+
+    for s in range(self.S):
+        C = numpy.array(self.C.evalf(subs = qdict)).astype('float')
+
+        if self.rotations:
+            w, x, y, z = qr[self.rotations[s]]
+
+            C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
+
+        K, M = polybasisqu.buildKM(C, self.dp[s], self.pv[s], self.density[s])
+
+        eigs, evecs = scipy.linalg.eigh(K, M, eigvals = (6, 6 + max(self.modes) - 1))
+
+        freqs = numpy.sqrt(eigs * 1e11) / (numpy.pi * 2000)
+
+        errors = freqs - self.data[s]
+
+        print "Sample: {0}".format(s)
+        if self.rotations:
+            print "Rotation: {0}".format(self.rotations[s])
+        print "Mean error: ", numpy.mean(errors)
+        print "Std deviation in error: ", numpy.std(errors)
+
+        print "Computed, Measured"
+        for i, freq in enumerate(freqs):
+            if i < len(self.data[s]):
+                print "{0:0.{2}f}, {1:0.{2}f}".format(freq, self.data[s][i], precision)
+
+#%%
+oqr = hmc.current_qr
+#%%
+hmc.current_qr = oqr
+print_current(hmc)
+hmc.current_qr = numpy.array([[0.9832, -0.00159, 0.1822, -0.00858]])#[[0.12659135700004318, 0.13590122210751876, -0.68950877979331, -0.7000593751607869]])
+print_current(hmc)

@@ -76,18 +76,23 @@ samples = dict(zip(*hmc.format_samples()))
 #%%
 dists = []
 sampled = []
-while len(sampled) < 10000:
+noreplace = []
+while len(sampled) < 1000:
     i = numpy.random.randint(1, 2001)
     j = numpy.random.randint(1, 2001)
 
-    if i == j or (i, j) in sampled:
+    if i == j or (i, j) in noreplace:
         continue
 
     q1 = [samples['w_0'][-i], samples['x_0'][-i], samples['y_0'][-i], samples['z_0'][-i]]
-    q2 = [samples['w_0'][-j], samples['x_0'][-j], samples['y_0'][-j], samples['z_0'][-j]]
+    q2 = [0.12659135700004318, 0.13590122210751876, -0.68950877979331, -0.7000593751607869]#[samples['w_0'][-j], samples['x_0'][-j], samples['y_0'][-j], samples['z_0'][-j]]
+
+    q1 = q1 / numpy.linalg.norm(q1)
+    q2 = q2 / numpy.linalg.norm(q2)
 
     #dists.append(miso(q1, q2))
     sampled.append((q1, q2))
+    noreplace.append((i, j))
 
     if len(sampled) % 10 == 0:
         print "Computed {0}/{1}".format(len(sampled), 10000)
