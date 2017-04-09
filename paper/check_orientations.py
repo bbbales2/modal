@@ -77,7 +77,7 @@ samples = dict(zip(*hmc.format_samples()))
 dists = []
 sampled = []
 noreplace = []
-while len(sampled) < 1000:
+while len(sampled) < 2000:
     i = numpy.random.randint(1, 2001)
     j = numpy.random.randint(1, 2001)
 
@@ -97,6 +97,22 @@ while len(sampled) < 1000:
     if len(sampled) % 10 == 0:
         print "Computed {0}/{1}".format(len(sampled), 10000)
 #%%
+dists = []
+sampled = []
+for i in range(1, 4001):
+
+    q1 = [samples['w_0'][-i], samples['x_0'][-i], samples['y_0'][-i], samples['z_0'][-i]]
+    q2 = [0.12659135700004318, 0.13590122210751876, -0.68950877979331, -0.7000593751607869]#[samples['w_0'][-j], samples['x_0'][-j], samples['y_0'][-j], samples['z_0'][-j]]
+
+    q1 = q1 / numpy.linalg.norm(q1)
+    q2 = q2 / numpy.linalg.norm(q2)
+
+    #dists.append(miso(q1, q2))
+    sampled.append((q1, q2))
+
+    if len(sampled) % 10 == 0:
+        print "Computed {0}/{1}".format(len(sampled), 10000)
+#%%
 import multiprocessing
 
 pool = multiprocessing.Pool(8)
@@ -107,12 +123,13 @@ print time.time() - tmp
 #%%
 import matplotlib.pyplot as plt
 
-plt.hist(dists)
+plt.hist(dists, bins = 50)
 plt.show()
 
 #%%
 
 print numpy.mean(dists)
+print numpy.percentile(dists, 5)
 print numpy.percentile(dists, 95)
 
 #%%

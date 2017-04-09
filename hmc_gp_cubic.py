@@ -166,6 +166,12 @@ while i < S:
         print i, " / ", S
         i += 1
 
+t = (1.685, 1.0, 0.446)
+y = func(*t)
+
+Xs[-1] = t
+Ys[-1] = y
+
 Xs = numpy.array(Xs)
 Ys = numpy.array(Ys)
 
@@ -456,6 +462,21 @@ plt.plot(a['a'], a['c44'], '*')
 plt.xlabel('a')
 plt.ylabel('c44')
 plt.show()
+#%%
+import seaborn
+seaborn.distplot(a['c11'], kde = False, fit = scipy.stats.norm)
+plt.title('$c_{11}$ (truth: $1.685$)', fontsize = 32)
+plt.tick_params(axis='x', which='major', labelsize=24)
+plt.show()
+seaborn.distplot(a['a'], kde = False, fit = scipy.stats.norm)
+plt.title('$a$ (truth: $1.00$)', fontsize = 32)
+plt.tick_params(axis='x', which='major', labelsize=24)
+plt.show()
+seaborn.distplot(a['c44'], kde = False, fit = scipy.stats.norm)
+plt.title('$c_{44}$ (truth: $0.446$)', fontsize = 32)
+plt.tick_params(axis='x', which='major', labelsize=24)
+plt.show()
+
 #%%
 L = Ys.shape[1]
 

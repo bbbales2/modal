@@ -327,7 +327,7 @@ class HMC():
             dlpdstd = 0.0
             logp = 0.0
 
-            for i in range(1, min(self.resolution, self.modes[s])):
+            for i in range(0, min(self.resolution, self.modes[s])):
                 dlpdfreqs[i] = (self.data[s][i] - freqs[r][i]) / (std ** 2)
                 dlpdstd += ((-(std ** 2) + (self.data[s][i] - freqs[r][i]) ** 2) / (std ** 3))
                 logp += (0.5 * (-((self.data[s][i] - freqs[r][i]) **2 / (std**2)) + numpy.log(1.0 / (2 * numpy.pi)) - 2 * numpy.log(std)))
