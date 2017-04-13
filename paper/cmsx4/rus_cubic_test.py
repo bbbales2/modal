@@ -254,7 +254,7 @@ hmc.print_current()
 hmc.sample(steps = 10, debug = True)
 print hmc.resolutions
 #%%
-hmc.set_timestepping(epsilon = epsilon * 10.0, L = 50, param_scaling = { 'std' : 1.0 })
+hmc.set_timestepping(epsilon = epsilon * 5.0, L = 50, param_scaling = { 'std' : 1.0 })
 hmc.sample(debug = False)#False)#True)
 #%%
 hmc.derivative_check()
@@ -286,7 +286,7 @@ import matplotlib.pyplot as plt
 import seaborn
 
 for name, data1 in zip(*hmc.format_samples()):
-    plt.plot(data1[:])
+    plt.plot(data1[-500:])
     plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
     plt.tick_params(axis='y', which='major', labelsize=16)
     plt.show()
