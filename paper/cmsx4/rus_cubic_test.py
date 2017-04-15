@@ -21,9 +21,9 @@ Zs = [0.019976, 0.01999, 0.020]#0.013199
 #Sample density
 density = [8701.0, 0.0290599 / (Xs[1] * Ys[1] * Zs[1]), 0.0290864 / (Xs[2] * Ys[2] * Zs[2])]#4401.695921 #Ti-64-TF2
 
-c110 = 2.0
-anisotropic0 = 2.0
-c440 = 1.0
+c110 = 2.5
+anisotropic0 = 2.80
+c440 = 1.3
 c120 = -(c440 * 2.0 / anisotropic0 - c110)
 
 # Standard deviation around each mode prediction
@@ -286,13 +286,13 @@ import matplotlib.pyplot as plt
 import seaborn
 
 for name, data1 in zip(*hmc.format_samples()):
-    plt.plot(data1[-500:])
+    plt.plot(data1[:])
     plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
     plt.tick_params(axis='y', which='major', labelsize=16)
     plt.show()
 #%%
 for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-900:]
+    data1 = data1[-1800:]
     seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
     plt.title('{0}, $\mu$ = {1:0.4f}, $\sigma$ = {2:0.4f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
     plt.tick_params(axis='x', which='major', labelsize=16)

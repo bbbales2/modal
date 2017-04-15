@@ -5,15 +5,8 @@ import time
 import scipy
 import sympy
 import os
-os.chdir('/home/bbales2/modal')
-
 import rus
-reload(rus)
-#%%
-#656 samples
-#%%
 
-## Dimensions for TF-2
 X = 0.007753
 Y = 0.009057
 Z = 0.013199
@@ -107,65 +100,11 @@ hmc = rus.HMC(density = [density], X = [X], Y = [Y], Z = [Z],
               stdMin = 0.3)
 
 hmc.set_labels({ c11 : 'c11', anisotropic : 'a', c44 : 'c44', 'std' : 'std' })
-hmc.derivative_check()
 
 hmc.set_timestepping(epsilon = epsilon, L = 50)
-#hmc.print_current()
-#hmc.computeResolutions(1e-3)
-hmc.sample(steps = 5, debug = True)
-#%%
-hmc.set_timestepping(epsilon = epsilon * 4.0, L = 50, param_scaling = { 'std' : 40.0 })
-hmc.sample(debug = False)#True)#False)#True)#False)#True)
-#%%
-hmc.derivative_check()
-#%%
-hmc.set_timestepping(epsilon = epsilon * 20, L = 75)
-hmc.sample(debug = True)#False)#True)
-#%%
-hmc.print_current()
-#%%
-posterior = hmc.posterior_predictive(plot = False, lastN = 200, raw = True).reshape((30, 200))
-#%%
-posterior = posterior.reshape(-1, 200)
-#%%
-for r, datap, mean, stdd in zip(range(1, 31), data, posterior.mean(axis = 1), posterior.std(axis = 1)):
-    print "{0} {1} {2:.2f} {3:.2f}".format(r, datap, mean, stdd)
-#%%
-hmc.posterior_predictive(plot = True, lastN = 200)
-plt.title('Posterior predictive', fontsize = 72)
-plt.xlabel('Mode', fontsize = 48)
-plt.ylabel('Computed - Measured (khz)', fontsize = 48)
-plt.tick_params(axis='y', which='major', labelsize=48)
-plt.tick_params(axis='x', which='major', labelsize=16)
-fig = plt.gcf()
-fig.set_size_inches((24, 16))
-plt.savefig('paper/ti/posteriorpredictive.png', dpi = 144)
-plt.show()
-#%%
-hmc.save('/home/bbales2/modal/paper/ti/qs.csv')
-#%%
-import pickle
+hmc.sample(steps = 10, debug = False, silent = True)
+hmc.set_timestepping(epsilon = epsilon * 4.0, L = 100, param_scaling = { 'std' : 40.0 })
 
-with open('paper/ti/ti_hmc_30_prior_0.3.pkl', 'w') as f:
-    pickle.dump(hmc, f)
-#%%
-import pickle
-
-with open('paper/ti/ti_hmc_30_prior_0.3.pkl', 'r') as f:
-    hmc = pickle.load(f)
-#%%
-import matplotlib.pyplot as plt
-import seaborn
-
-for name, data1 in zip(*hmc.format_samples()):
-    plt.plot(data1[-2000:])
-    plt.title('{0}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 24)
-    plt.tick_params(axis='y', which='major', labelsize=16)
-    plt.show()
-#%%
-for name, data1 in zip(*hmc.format_samples()):
-    data1 = data1[-2000:]
-    seaborn.distplot(data1, kde = False, fit = scipy.stats.norm)
-    plt.title('{0}, $\mu$ = {1:0.3f}, $\sigma$ = {2:0.3f}'.format(name, numpy.mean(data1), numpy.std(data1)), fontsize = 36)
-    plt.tick_params(axis='x', which='major', labelsize=16)
-    plt.show()
+while True:
+    hmc.sample(steps = 1, debug = False, silent = True)#False)#True)
+    print ", ".join("{0}, {1}".format(a, b[0]) for a, b in zip(*hmc.format_samples(1)))
