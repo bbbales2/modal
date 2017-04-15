@@ -1,0 +1,11 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=96:00:00
+
+export OMP_NUM_THREADS=1
+
+cd $PBS_O_WORKDIR
+
+source /home/bbales2/anaconda/bin/activate
+export PYTHONPATH=/home/bbales2/modal:$PYTHONPATH
+python run_qsub.py
