@@ -79,7 +79,7 @@ hmc = rus.HMC(density = densities, X = Xs, Y = Ys, Z = Zs,
               resonance_modes = data, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
               parameters = { c11 : c110, anisotropic : anisotropic0, c44 : c440, 'std' : std0 }, # Parameters
-              rotations = True,
+              rotations = [0, 1, 2],
               T = 1.0,
               stdMin = 0.0,
               tol = 1e-3)

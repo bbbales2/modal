@@ -50,6 +50,12 @@ if ckeys[0] != keys:
 if len(ckeys[0]) == 0:
     raise Exception("At least one file appears to have no keys")
 
+keysList = sorted(list(keys))
+
+print " " * 9 + " ".join("{0:<15}".format(key) for key in keysList)
+for i, chain in enumerate(chains):
+    print "Chain {0}: ".format(i) + " ".join("{0:<+5.3f} ({1:<+4.3f})".format(numpy.mean(chain[key]), numpy.std(chain[key])) for key in keysList)
+
 def check_mixing(chains):
     minl = min(len(chain) for chain in chains)
 
@@ -80,7 +86,7 @@ def check_mixing(chains):
 
     return numpy.sqrt(var / W), W, B
 
-for key in sorted(list(keys)):
+for key in keysList:
     tchains = [chain[key] for chain in chains]
 
     R, W, B = check_mixing(tchains)

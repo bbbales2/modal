@@ -14,12 +14,18 @@ reload(rus)
 #%%
 
 ## Dimensions for TF-2
-Xs = [0.011959, 0.012, 0.01198]#0.007753
+Xs = [0.019976, 0.012, 0.01198]#0.007753
 Ys = [0.013953, 0.01399, 0.01397]#0.009057
-Zs = [0.019976, 0.01999, 0.020]#0.013199
+Zs = [0.011959, 0.01999, 0.020]#0.013199
+
+X = Xs[0]
+Y = Ys[0]
+Z = Zs[0]
 
 #Sample density
 density = [8701.0, 0.0290599 / (Xs[1] * Ys[1] * Zs[1]), 0.0290864 / (Xs[2] * Ys[2] * Zs[2])]#4401.695921 #Ti-64-TF2
+
+density = density[0]
 
 c110 = 2.5
 anisotropic0 = 2.80
@@ -239,8 +245,8 @@ C = sympy.Matrix([[c11, c12, c12, 0, 0, 0],
                   [0, 0, 0, 0, c44, 0],
                   [0, 0, 0, 0, 0, c44]])
 
-hmc = rus.HMC(density = density, X = Xs, Y = Ys, Z = Zs,
-              resonance_modes = data, # List of resonance modes
+hmc = rus.HMC(density = [density], X = [X], Y = [Y], Z = [Z],
+              resonance_modes = data1, # List of resonance modes
               stiffness_matrix = C, # Stiffness matrix
               parameters = { c11 : c110, anisotropic : anisotropic0, c44 : c440, 'std' : std0 }, # Parameters
               rotations = True,
