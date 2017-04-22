@@ -5,6 +5,7 @@ import numpy
 import matplotlib.pyplot as plt
 import argparse
 import re
+import statsmodels.tsa.stattools
 
 parser = argparse.ArgumentParser(prog='Chain Checker')
 parser.add_argument('--prefix', default = "", nargs='?', help='Discard all lines in files except those with this prefix')
@@ -53,13 +54,32 @@ if len(ckeys[0]) == 0:
 keysList = sorted(list(keys))
 
 print " " * 9 + " ".join("{0:<15}".format(key) for key in keysList)
+minl = min(len(chain[keysList[0]]) for chain in chains)
+    
 for i, chain in enumerate(chains):
-    print "Chain {0}: ".format(i) + " ".join("{0:<+5.3f} ({1:<+4.3f})".format(numpy.mean(chain[key]), numpy.std(chain[key])) for key in keysList)
+    print "Chain {0}: ".format(i) + " ".join("{0:<+5.3f} ({1:<+4.3f})".format(numpy.mean(chain[key][-minl // 2:]), numpy.std(chain[key][-minl // 2:])) for key in keysList)
+
+import matplotlib.pyplot as plt
 
 def check_mixing(chains):
     minl = min(len(chain) for chain in chains)
 
     chainsPostWarmup = [chain[-minl // 2:] for chain in chains]
+
+    nsamps = 0
+    for chain in chainsPostWarmup:
+        #print sum(statsmodels.tsa.stattools.acf(chain, nlags = len(chain)))
+        nsamps += len(chain) / (1 + 2.0 * sum(statsmodels.tsa.stattools.acf(chain, nlags = len(chain))))
+
+        plt.subplot(2, 1, 1)
+        plt.plot(chain)
+        plt.subplot(2, 1, 2)
+        plt.hist(chain)
+        plt.show()
+        #print numpy.cumsum(statsmodels.tsa.stattools.acf(chain, nlags = len(chain)))[-5:]
+        #plt.plot(numpy.cumsum(statsmodels.tsa.stattools.acf(chain, nlags = len(chain))))
+        #plt.show(block = True)
+    #1/0    
 
     n = (minl // 2) // 2
 
@@ -84,12 +104,12 @@ def check_mixing(chains):
 
     var = (n - 1) * W / n + B / n
 
-    return numpy.sqrt(var / W), W, B
+    return numpy.sqrt(var / W), W, B, nsamps
 
 for key in keysList:
     tchains = [chain[key] for chain in chains]
 
-    R, W, B = check_mixing(tchains)
+    R, W, B, neff = check_mixing(tchains)
 
-    print "Parameter {0:<5} Rhat {1:<5} Within variance {2:<5} Between variance {3:<5}".format(key, R, W, B)
+    print "Parameter {0:<5} Rhat {1:<+5.3f} Within variance {2:<+5.3e} Between variance {3:<+5.3e}, number of effective samples {4}".format(key, R, W, B, neff)
     
