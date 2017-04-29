@@ -10,40 +10,15 @@ from rotations import quaternion
 
 from rotations import inv_rotations
 
-inv_rotations.convention = inv_rotations.Convention.passive
-q3 = inv_rotations.eu2qu(numpy.array([180.9, 89.3, 338.6]) * numpy.pi / 180.0)
-
-phi = -95.64
-chi = 18.266
-q1 = numpy.array([numpy.cos(chi * numpy.pi / 360.0), 0.0, -numpy.sin(chi * numpy.pi / 360.0), 0.0])
-q2 = numpy.array([numpy.cos(phi * numpy.pi / 360.0), 0.0, 0.0, -numpy.sin(phi * numpy.pi / 360.0)])
-
-q1 = quaternion.Quaternion(q1 / numpy.linalg.norm(q1))
-q2 = quaternion.Quaternion(q2 / numpy.linalg.norm(q2))
-q100 = q1 * q2
-
-phi = -90.688
-chi = 63.266
-q1 = numpy.array([numpy.cos(chi * numpy.pi / 360.0), 0.0, -numpy.sin(chi * numpy.pi / 360.0), 0.0])
-q2 = numpy.array([numpy.cos(phi * numpy.pi / 360.0), 0.0, 0.0, -numpy.sin(phi * numpy.pi / 360.0)])
-q3 = numpy.array([numpy.cos(45.0 * numpy.pi / 360.0), 0.0, 0.0, -numpy.sin(45.0 * numpy.pi / 360.0)])
-
-q1 = quaternion.Quaternion(q1 / numpy.linalg.norm(q1))
-q2 = quaternion.Quaternion(q2 / numpy.linalg.norm(q2))
-q3 = quaternion.Quaternion(q3 / numpy.linalg.norm(q3))
-q110 = q1 * q2 * q3
-
-print misoo(q100, q110)
-#print q3
-#%%
 import itertools
 
-def misoo(q1, q2):
+def miso(q1, q2):
     cubicSym = symmetry.Symmetry.Cubic.quOperators()
     orthoSym = symmetry.Symmetry.Orthorhombic.quOperators()
 
-    miso = 180.0
+    misot = 180.0
     misoa = None
+
 
     def adj(q):
         if q.wxyz[0] < 0.0:
@@ -59,8 +34,8 @@ def misoo(q1, q2):
             qa = orthoSym[ii] * q1 * cubicSym[i]
 
             for j in range(len(cubicSym)):
-                for jj in range(len(orthoSym)):
-                    qb = orthoSym[jj] * q2 * cubicSym[j]
+                #for jj in range(len(orthoSym)):
+                    qb = q2 * cubicSym[j]
 
                     qasb1 = qa.conjugate() * qb
 
@@ -68,8 +43,88 @@ def misoo(q1, q2):
 
                     a1 = 2 * numpy.arccos(t1[0]) * 180 / numpy.pi
 
-                    if a1 < miso:
-                        miso = a1
+                    if a1 < misot:
+                        misot = a1
                         misoa = qasb1
 
-    return miso, misoa
+    return misot, misoa
+#%%
+
+from numpy import pi, cos, sin, array, concatenate
+from rotations.quaternion import Quaternion
+
+def quat(q):
+    return Quaternion(array(q) / numpy.linalg.norm(q))
+
+def quat2(ang, axis):
+    tmp = sin(ang) * array(axis)
+    return quat([cos(ang), tmp[0], tmp[1], tmp[2]])
+
+inv_rotations.convention = inv_rotations.Convention.passive
+qebsd = quat(inv_rotations.eu2qu(array([180.9, 89.3, 338.6]) * numpy.pi / 180.0))
+
+phi = pi * -95.64 / 360.0
+chi = pi * 18.266 / 360.0
+q1 = quat2(chi, [0.0, 1.0, 0.0])
+v1 = quat([0, 0, 0, 1])
+v2 = q1 * v1 * q1.conjugate()
+
+q2 = quat2(phi, v2.wxyz[1:])
+
+q100 = q2 * q1
+
+phi = -90.688
+chi = 63.266
+q1 = quat2(chi, [0.0, 1.0, 0.0])
+v1 = quat([0, 0, 0, 1])
+v2 = q1 * v1 * q1.conjugate()
+q2 = quat2(phi, v2.wxyz[1:])
+
+q110 = q2 * q1
+
+phi = -90.688
+chi = 63.266
+q1 = quat2(chi, [0.0, 1.0, 0.0])
+v1 = quat([0, 0, 0, 1])
+v2 = q1 * v1 * q1.conjugate()
+q2 = quat2(phi, v2.wxyz[1:])
+
+q110 = q2 * q1
+#%%
+qcomp = quat([0.988, 0.0, 0.001, -0.151])
+qcomp = quat([0.99, 0.0, -0.13, 0.056])
+qcomp = quat([-0.41146,-0.425169,0.573716,-0.566376])
+qwill = quat([0.70181185, 0.69437080, 0.12351422, 0.10026744])#[0.69774412,  0.69817909,  0.12513392,  0.10020276])
+unit = quat([1.0,  0.0,  0.0,  0.0])
+
+miso(qwill, qcomp)
+#%%
+import pickle
+
+with open('paper/cmsx4/hmc_30_noprior.pkl') as f:
+    hmc = pickle.load(f)
+
+#%%
+samples = dict(zip(*hmc.format_samples()))
+
+misos = []
+for i in range(1, 501):#len(samples['c11'])):
+    qcomp = quat([samples['w_0'][-i], samples['x_0'][-i], samples['y_0'][-i], samples['z_0'][-i]])
+
+    misos.append(miso(qwill, qcomp)[0])
+
+    print "{0}/{1}".format(i, 500)
+
+#%%
+import matplotlib.pyplot as plt
+import seaborn
+plt.hist(misos)
+import scipy.stats
+#%%
+seaborn.distplot(misos, fit = scipy.stats.chi2)
+#%%
+chi2 = scipy.stats.chi2(misos)
+
+chi2.mean()
+#%%
+numpy.sqrt(numpy.mean(misos) / 2)
