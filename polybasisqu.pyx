@@ -132,23 +132,23 @@ cpdef buildRot(C, w, x, y, z):
 
     Q = numpy.array([[w**2 - (y**2 + z**2) + x**2, 2.0 * (x * y - w * z), 2.0 * (x * z + w * y)],
                      [2.0 * (y * x + w * z), w**2 - (x**2 + z**2) + y**2, 2.0 * (y * z - w * x)],
-                     [2.0 * (z * x - w * y), 2.0 * (z * y + w * x), w**2 - (x**2 + y**2) + z**2]])
+                     [2.0 * (z * x - w * y), 2.0 * (z * y + w * x), w**2 - (x**2 + y**2) + z**2]]).T
 
     dQdw = numpy.array([[2 * w, -2.0 * z, 2.0 * y],
                         [2.0 * z, 2 * w, -2.0 * x],
-                        [-2.0 * y, 2.0 * x, 2 * w]])
+                        [-2.0 * y, 2.0 * x, 2 * w]]).T
 
     dQdx = numpy.array([[2 * x, 2.0 * y, 2.0 * z],
                         [2.0 * y, -2.0 * x, -2.0 * w],
-                        [2.0 * z, 2.0 * w, -2.0 * x]])
+                        [2.0 * z, 2.0 * w, -2.0 * x]]).T
 
     dQdy = numpy.array([[-2 * y, 2 * x, 2 * w],
                         [2 * x, 2 * y, 2 * z],
-                        [-2 * w, 2 * z, -2 * y]])
+                        [-2 * w, 2 * z, -2 * y]]).T
 
     dQdz = numpy.array([[-2 * z, -2 * w, 2 * x],
                         [2 * w, -2 * z, 2 * y],
-                        [2 * x, 2 * y, 2 * z]])
+                        [2 * x, 2 * y, 2 * z]]).T
 
     for i in range(3):
         for j in range(3):
@@ -199,23 +199,23 @@ cpdef buildRot2(C, w, x, y, z):
 
     Q = numpy.array([[w**2 - (y**2 + z**2) + x**2, 2.0 * (x * y - w * z), 2.0 * (x * z + w * y)],
                      [2.0 * (y * x + w * z), w**2 - (x**2 + z**2) + y**2, 2.0 * (y * z - w * x)],
-                     [2.0 * (z * x - w * y), 2.0 * (z * y + w * x), w**2 - (x**2 + y**2) + z**2]])
+                     [2.0 * (z * x - w * y), 2.0 * (z * y + w * x), w**2 - (x**2 + y**2) + z**2]]).T
 
     dQdw = numpy.array([[2 * w, -2.0 * z, 2.0 * y],
                         [2.0 * z, 2 * w, -2.0 * x],
-                        [-2.0 * y, 2.0 * x, 2 * w]])
+                        [-2.0 * y, 2.0 * x, 2 * w]]).T
 
     dQdx = numpy.array([[2 * x, 2.0 * y, 2.0 * z],
                         [2.0 * y, -2.0 * x, -2.0 * w],
-                        [2.0 * z, 2.0 * w, -2.0 * x]])
+                        [2.0 * z, 2.0 * w, -2.0 * x]]).T
 
     dQdy = numpy.array([[-2 * y, 2 * x, 2 * w],
                         [2 * x, 2 * y, 2 * z],
-                        [-2 * w, 2 * z, -2 * y]])
+                        [-2 * w, 2 * z, -2 * y]]).T
 
     dQdz = numpy.array([[-2 * z, -2 * w, 2 * x],
                         [2 * w, -2 * z, 2 * y],
-                        [2 * x, 2 * y, 2 * z]])
+                        [2 * x, 2 * y, 2 * z]]).T
 
     Cv = numpy.zeros((3, 3, 3, 3))
 

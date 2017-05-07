@@ -1,3 +1,4 @@
+#%%
 import numpy
 import time
 import scipy.linalg
@@ -9,29 +10,30 @@ pyximport.install(reload_support = True)
 import polybasisqu
 reload(polybasisqu)
 from rotations import inv_rotations
+from rotations.quaternion import Quaternion as Q
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 4
+N = 10
 
 ## Dimensions for TF-2
-X = 0.007753
-Y = 0.009057
-Z = 0.013199
+X = 0.012
+Y = 0.020
+Z = 0.014
 
-c11 = 2.5
-a = 2.8
+c11 = 2.51
+a = 2.83
 c44 = 1.33
 c12 = -(c44 * 2.0 / a - c11)
 #sample mass
 
 #Sample density
-density = 4401.695921
+density = 8700.0#4401.695921
 
-def func(w, x, y, z):
+def func(X, Y, Z, w, x, y, z):
     q = numpy.array([w, x, y, z])
     q /= numpy.linalg.norm(q)
     w, x, y, z = q.flatten()
-    
+
     C = numpy.array([[c11, c12, c12, 0, 0, 0],
                      [c12, c11, c12, 0, 0, 0],
                      [c12, c12, c11, 0, 0, 0],
@@ -50,3 +52,17 @@ def func(w, x, y, z):
 
 print "Computed: ", func(-0.414888,-0.419461,0.575763,-0.566055)
 print "Measured: ", func(0.69774412,  0.69817909,  0.12513392,  0.10020276)
+#%%
+#71.25925, 75.75875, 86.478, 89.947375, 111.150125, 112.164125, 120.172125, 127.810375, 128.6755, 130.739875, 141.70025, 144.50375,
+func(X, Y, Z, 0.69774412, 0.69817909, 0.12513392, 0.10020276)
+#%%
+q = Q([0.69774412,  0.69817909,  0.12513392,  0.10020276])
+
+print q.conjugate() * Q([0, 1, 0, 0]) * q
+print q.conjugate() * Q([0, 0, 1, 0]) * q
+
+om = numpy.array(inv_rotations.qu2om(q.wxyz)).reshape(3, 3, order = 'C')#[-0.414888,-0.419461,0.575763,-0.566055]
+
+print om.T.dot(numpy.array([1, 0, 0]))
+print om.T.dot(numpy.array([0, 1, 0]))
+
