@@ -1,3 +1,4 @@
+#%%
 import numpy
 import time
 import scipy.linalg
@@ -11,7 +12,7 @@ reload(polybasisqu)
 from rotations import inv_rotations
 
 # basis polynomials are x^n * y^m * z^l where n + m + l <= N
-N = 4
+N = 10
 
 ## Dimensions for TF-2
 X = 0.007753
@@ -31,9 +32,9 @@ def func():
     emin = scipy.linalg.eigh(C)[0][0]
 
     C -= numpy.eye(6) * emin * 1.1
-    
+
     print C
-    
+
     numpy.linalg.cholesky(C)
 
     dp, pv, ddpdX, ddpdY, ddpdZ, dpvdX, dpvdY, dpvdZ = polybasisqu.build(N, X, Y, Z)
@@ -41,7 +42,7 @@ def func():
     cu = numpy.random.rand(3)
     print cu
     w, x, y, z = inv_rotations.cu2qu(list(cu))
-    
+
     C, _, _, _, _, _ = polybasisqu.buildRot(C, w, x, y, z)
 
     K, M = polybasisqu.buildKM(C, dp, pv, density)
@@ -74,13 +75,13 @@ for l in range(0, N + 1):
         for n in range(0, N + 1):
             if l + m + n <= N:
                 lmns.append((l, m, n))
-
+#%%
 M = numpy.zeros((R, 3, R, 3))
 K = numpy.zeros((R, 3, R, 3))
 
 def f(l0, l1, d):
     p = l0 + l1
-    
+
     return numpy.power(d, p + 1) / (p + 1)
 
 def fd(l0, l1, d):
@@ -88,7 +89,7 @@ def fd(l0, l1, d):
 
     if l1 == 0:
         return 0.0
-    
+
     return l1 * numpy.power(d, p + 1) / (p + 1)
 
 def df(l0, l1, d):
@@ -102,7 +103,7 @@ def dd(l0, l1, d):
 
     if l1 == 0:
         return 0.0
-    
+
     return l1 * l0 * numpy.power(d, p + 1) / (p + 1)
 
 for i in range(3):

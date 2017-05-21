@@ -11,12 +11,13 @@ import itertools
 import time
 # get the equivalent passive rotation in the fundamental zone (active post multiplies symmetry operator)
 
-q1 = [0.988, 0.0, 0.006, -0.152]
+#%%
+q1 = [0.703295, -0.111453, -0.101898, -0.69467299999999998]#0.988, 0.0, 0.006, -0.152]
 #q = q / numpy.linalg.norm(q)
 
 #q1 = quaternion.Quaternion(q)
 
-q2 = [-0.425, -0.425, 0.565, 0.565]
+q2 = [0.70376400000000006, -0.69423599999999996, -0.10509, 0.10820899999999999]#-0.425, -0.425, 0.565, 0.565]
 #q = q / numpy.linalg.norm(q)
 
 #q2 = quaternion.Quaternion(q)
@@ -35,8 +36,8 @@ def adj(q):
     return q
 
 def miso((q1, q2)):
-    q1 = quaternion.Quaternion(numpy.array(q1) / numpy.linalg.norm(q1))
-    q2 = quaternion.Quaternion(numpy.array(q2) / numpy.linalg.norm(q2))
+    q1 = quaternion.Quaternion(numpy.array(q1) / numpy.linalg.norm(q1)).conjugate()
+    q2 = quaternion.Quaternion(numpy.array(q2) / numpy.linalg.norm(q2)).conjugate()
     misot = 180.0
     misoa = None
 

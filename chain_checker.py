@@ -25,13 +25,25 @@ def parse(fname):
 
             for key, val in zip(tokens[0::2], tokens[1::2]):
                 key = key.strip()
-                val = float(val)
+                try:
+                    val = float(val)
+                except:
+                    break
                 
                 if key not in samples:
                     samples[key] = []
 
                 samples[key].append(val)
 
+        minLen = min(len(samples[key]) for key in samples)
+        maxLen = max(len(samples[key]) for key in samples)
+
+        if minLen != maxLen:
+            print "Warning: throwing away {0} samples".format(maxLen, minLen)
+
+            for key in samples:
+                samples[key] = samples[key][:minLen]
+                
     for key in samples:
         samples[key] = numpy.array(samples[key])
 
