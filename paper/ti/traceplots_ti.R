@@ -8,32 +8,9 @@ library(ggthemes)
 
 setwd("~/modal/paper/ti")
 
-df = read_csv("initial_conditions_set_chains/chain1p.txt", col_names = FALSE) %>%
+df = read_csv("paper_initial_conditions/chain1.txt", col_names = FALSE) %>%
   select(c11 = X2, std = X4, c44 = X6, a = X8)
 df %>% summary()
-
-q1 = df %>% group_by(chain) %>% mutate(sample = row_number()) %>% ungroup() %>%
-  ggplot(aes(sample, c11)) +
-  geom_line(aes(group = chain), alpha = 0.75) +
-  facet_grid(chain ~ ., labeller = "label_both") +
-  ylab(expression(c[11]))
-q2 = df %>% group_by(chain) %>% mutate(sample = row_number()) %>% ungroup() %>%
-  ggplot(aes(sample, a)) +
-  geom_line(aes(group = chain), alpha = 0.75) +
-  facet_grid(chain ~ ., labeller = "label_both") +
-  ylab("Anisotropy ratio")
-q3 = df %>% group_by(chain) %>% mutate(sample = row_number()) %>% ungroup() %>%
-  ggplot(aes(sample, c44)) +
-  geom_line(aes(group = chain), alpha = 0.75) +
-  facet_grid(chain ~ ., labeller = "label_both") +
-  ylab(expression(c[44]))
-q4 = df %>% group_by(chain) %>% mutate(sample = row_number()) %>% ungroup() %>%
-  ggplot(aes(sample, std)) +
-  geom_line(aes(group = chain), alpha = 0.75) +
-  facet_grid(chain ~ ., labeller = "label_both") +
-  ylab(expression(sigma))
-
-grid.arrange(q1, q2, q3, q4, nrow = 2, ncol = 2, top = "Elastic constants")
 
 df3 = df %>%
   rename("c[11]" = "c11", "A" = "a", "c[44]" = "c44", "sigma" = "std") %>%
