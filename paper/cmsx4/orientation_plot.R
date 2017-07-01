@@ -5,7 +5,7 @@ library(gridExtra)
 
 setwd("~/modal/paper/cmsx4")
 
-df = read_csv("hmc_30_noprior_data_warmup.csv", col_names = TRUE)
+df = read_csv("hmc_30_noprior_data.csv", col_names = TRUE)
 df %>% summary()
 
 p1 = df %>% ggplot(aes(cu1, cu2)) + geom_point(alpha = 0.25) + geom_point(aes(x = 0, y = 0), col = "orange")
@@ -56,7 +56,7 @@ for(i in 1:nrow(df4)) {
 df3 %>%
   ggplot(aes(value)) +
   geom_histogram(aes(y = ..density..), fill = "grey40", col = "grey77", size = 0.25) +
-  geom_line(data = df5, aes(x, y), col = "orange", size = 1.5) +
+  geom_line(data = df5, aes(x, y), alpha = 0.75, col = "orange", size = 1.5) +
   facet_wrap( ~ param, scales = "free", labeller = label_parsed) + ylab("") + xlab("") + labs(y = NULL, x = NULL) +
   theme(strip.text = element_text(size=12))
 

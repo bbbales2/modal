@@ -5,11 +5,9 @@ library(gridExtra)
 library(scales)
 library(ggthemes)
 
+setwd("~/modal/paper/cmsx4")
 
-setwd("~/modal/paper/ti")
-
-df = read_csv("paper_initial_conditions/chain1.txt", col_names = FALSE) %>%
-  select(c11 = X2, std = X4, c44 = X6, a = X8)
+df = read_csv("qs_norot.csv")
 df %>% summary()
 
 df3 = df %>%
@@ -49,16 +47,11 @@ number_ticks = function(n) {
     m = mean(limits)
     l = quantile(limits, 0.15)
     u = quantile(limits, 0.85)
-    c(l, m, u)#format(, nsmall = n, scientific = FALSE)
+    c(l, m, u)
   }
 }
 
 to_expression = function(x) {
-  #out = list()
-  #for(i in 1:length(x)) {
-  #  out[i] = expression(c[11])
-  #}
-  #out
   rep(expression("c[11]"), length(x))
 }
 
