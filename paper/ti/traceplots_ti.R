@@ -27,13 +27,6 @@ for(i in 1:nrow(df4)) {
   df5 = bind_rows(df5, a)
 }
 
-df3 %>%
-  ggplot(aes(value)) +
-  geom_histogram(aes(y = ..density..), fill = "grey40", col = "grey77", size = 0.25) +
-  geom_line(data = df5, aes(x, y), alpha = 0.75, col = "orange", size = 1.5) +
-  facet_wrap( ~ param, scales = "free", labeller = label_parsed) + ylab("") + xlab("") + labs(y = NULL, x = NULL) +
-  theme(strip.text = element_text(size=12))
-
 fmt_dcimals = function(){
   function(x) {
     if(abs(x - 1.0) < 0.1) {
@@ -62,6 +55,14 @@ to_expression = function(x) {
   rep(expression("c[11]"), length(x))
 }
 
+df3 %>%
+  ggplot(aes(value)) +
+  geom_histogram(aes(y = ..density..), fill = "grey40", col = "grey77", size = 0.25) +
+  geom_line(data = df5, aes(x, y), alpha = 0.75, col = "orange", size = 1.5) +
+  facet_wrap( ~ param, scales = "free", labeller = label_parsed) + ylab("") + xlab("") + labs(y = NULL, x = NULL) +
+  scale_x_continuous(breaks = number_ticks(3), labels = fmt_dcimals()) +
+  theme(strip.text = element_text(size=12),
+        axis.text = element_text(size = 10))
 
 df %>% mutate(sample = row_number()) %>%
   rename("c[11]" = "c11", "A" = "a", "c[44]" = "c44", "sigma" = "std") %>%
